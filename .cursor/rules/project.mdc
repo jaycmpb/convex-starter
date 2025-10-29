@@ -1,0 +1,6 @@
+---
+alwaysApply: true
+---
+
+- Use bun for all package management.
+- Use bun test for all testing.

@@ -1,0 +1,8 @@
+# Project
+README.md
+tsconfig.json
+package.json
+.gitignore
+
+# Convex
+/convex/_generated

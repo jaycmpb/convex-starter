@@ -1,0 +1,37 @@
+# Dependencies (bun install)
+node_modules
+
+# Output
+out
+dist
+*.tgz
+
+# Code Coverage
+coverage
+*.lcov
+
+# Logs
+logs
+_.log
+report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
+
+# Dotenv Environment Variable Files
+.env
+.env.development.local
+.env.test.local
+.env.production.local
+.env.local
+
+# Caches
+.eslintcache
+.cache
+*.tsbuildinfo
+
+# IntelliJ-based IDEs
+.idea
+
+# Finder (MacOS) Folder Config
+.DS_Store
+
+# Convex
+/convex/_generated

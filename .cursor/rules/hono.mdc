@@ -1,0 +1,15 @@
+---
+globs: convex/**/http.ts
+alwaysApply: false
+---
+
+- In Hono HTTP handlers with Convex, use `c.env.runQuery()` and `c.env.runMutation()` instead of `c.ctx.runQuery()` and `c.ctx.runMutation()`. The Convex context is bound to Hono's environment, not the context object.
+- Use `describeRoute` with inline Zod schemas for OpenAPI documentation. Always include `tags` array to group related endpoints. All descriptions should be full sentences with punctuation, and response descriptions should be title case. Do NOT include `request` sections in `describeRoute` - use `validator` for request validation instead.
+- When creating or modifying endpoints, ensure `describeRoute` accurately represents the endpoint behavior and includes comprehensive examples of inputs, outputs, and error responses. Update documentation whenever endpoint logic changes.
+- Always include `parameters` with `example` values for path parameters (e.g., `:id`, `:name`) to show developers exactly how to use the endpoint.
+- Use `validator` from `hono-openapi` for input validation with `c.req.valid("json")` to access validated, typed request data.
+- For error handling, use `ErrorCodes.ERROR_CODE` directly for expected business logic errors (no logging), or `logAndReturnError(ctx, ErrorCodes.ERROR_CODE, "custom message")` for unexpected errors that should be logged to external services. Expected errors return `{ ...ErrorCodes.ERROR_CODE, message: "custom message" }`, logged errors return `{ error: string, code: string, status: HttpStatusCode, details?: any }`.
+- Error logging works via `logAndReturnError(ctx, errorCode, message)` which automatically schedules PostHog error logging as a background job using `ctx.env.scheduler.runAfter()`. The function works with both Hono and Convex contexts.
+- All error messages should be full sentences with proper punctuation and capitalization.
+- Cast URL parameters to Convex ID types using `as Id<"tableName">` when passing to mutations/queries.
+- Export the Hono `app` instance directly, not wrapped in `HttpRouterWithHono` (the main http.ts handles the wrapper).

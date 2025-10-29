@@ -1,0 +1,22 @@
+---
+description: When working with anything Convex related, in @convex.
+globs: convex/*,convex/*.*,convex/*.ts
+alwaysApply: true
+---
+
+- All user created files should reside in the `convex/src` directory then separated by [entity]/[functionType].ts (e.g. `convex/src/users/mutations.ts`, `convex/src/users/queries.ts`, `convex/src/users/actions.ts`). These are dependent on the Convex docs (e.g. `schema.ts` should always be at the root convex directory).
+- All user created files should be named like `convex/src/[entity]/[functionType].ts` (e.g. `convex/src/users/mutations.ts`, `convex/src/users/queries.ts`, `convex/src/users/actions.ts`, `convex/src/users/http.ts`).
+- Shared functions should be in the `convex/src/_shared` directory.
+- Optimize for readability and maintainability, using JSDoc comments to describe the function and its arguments.
+- Use the Convex docs to guide the structure of the code.
+- Refer to the relevent @docs for project-specific guidelines.
+- Always analyze the existing codebase to understand the project's structure and conventions.
+- Avoid duplicating code and use shared functions when possible.
+- Follow the project's existing conventions and style.
+- Two lines between each function declaration.
+- Use full sentences in comments, including JSDoc comments—include punctuation and capitalization.
+- Use the `@convex` alias for all imports.
+- For index naming, use the following format: `by_[fieldName]` (e.g. `by_orgId_name`, `by_userId_email`, `by_name`). The parenting field should be the first field in the index.
+- For error handling, use `ErrorCodes.ERROR_CODE` directly for expected business logic errors (no logging), or `logAndReturnError(ctx, ErrorCodes.ERROR_CODE, "custom message")` for unexpected errors that should be logged to external services. Expected errors return `{ ...ErrorCodes.ERROR_CODE, message: "custom message" }`, logged errors return `{ error: string, code: string, status: HttpStatusCode, details?: any }`. Use `throw new Error(errorData.error)` for Convex functions.
+- Error logging works via `logAndReturnError(ctx, errorCode, message)` which automatically schedules PostHog error logging as a background job using `ctx.scheduler.runAfter()`. The function works with both Hono and Convex contexts.
+- All error messages should be full sentences with proper punctuation and capitalization.
