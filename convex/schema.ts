@@ -1,11 +1,123 @@
+import { authTables } from "@convex-dev/auth/server";
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
-  counters: defineTable({
-    name: v.string(),
-    value: v.number(),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  }).index("by_name", ["name"]),
+	// Convex Auth tables (authAccounts, authSessions, authRefreshTokens, etc.).
+	...authTables,
+
+	settings: defineTable({
+		name: v.string(),
+		roles: v.array(v.string()),
+		integrationSource: v.union(v.literal("airtable"), v.literal("monday"), v.literal("clickup")),
+		webhookSecret: v.optional(v.string()),
+	}),
+
+	// Custom users table (extends auth users table).
+	users: defineTable({
+		// Auth Fields
+		email: v.optional(v.string()),
+		emailVerificationTime: v.optional(v.number()),
+		phone: v.optional(v.string()),
+		phoneVerificationTime: v.optional(v.number()),
+		image: v.optional(v.string()),
+		isAnonymous: v.optional(v.boolean()),
+		// Custom Fields
+		role: v.optional(v.string()),
+		isStaff: v.optional(v.boolean()),
+		externalId: v.optional(v.string()),
+		firstName: v.optional(v.string()),
+		lastName: v.optional(v.string()),
+	})
+		.index("email", ["email"])
+		.index("phone", ["phone"])
+		.index("by_externalId", ["externalId"])
+		.index("by_isStaff", ["isStaff"]),
+
+	accounts: defineTable({
+		name: v.string(),
+		type: v.union(v.literal("personal"), v.literal("business")),
+		externalId: v.optional(v.string()),
+		deletedAt: v.optional(v.number()),
+	})
+		.index("by_externalId", ["externalId"])
+		.index("by_type", ["type"]),
+
+	accountAccess: defineTable({
+		accountId: v.id("accounts"),
+		userId: v.id("users"),
+		accessLevel: v.union(v.literal("owner"), v.literal("viewer"), v.literal("editor")),
+	})
+		.index("by_accountId", ["accountId"])
+		.index("by_userId", ["userId"])
+		.index("by_accountId_userId", ["accountId", "userId"]),
+
+	workItemTypes: defineTable({
+		name: v.string(),
+		statusConfig: v.array(
+			v.object({
+				status: v.string(),
+				progress: v.number(),
+			}),
+		),
+		deletedAt: v.optional(v.number()),
+	}).index("by_name", ["name"]),
+
+	workItems: defineTable({
+		accountId: v.id("accounts"),
+		typeId: v.id("workItemTypes"),
+		status: v.string(),
+		assignedUserId: v.optional(v.id("users")),
+		externalId: v.optional(v.string()),
+		name: v.optional(v.string()),
+		description: v.optional(v.string()),
+		dueAt: v.optional(v.number()),
+		deletedAt: v.optional(v.number()),
+	})
+		.index("by_accountId", ["accountId"])
+		.index("by_typeId", ["typeId"])
+		.index("by_assignedUserId", ["assignedUserId"])
+		.index("by_externalId", ["externalId"])
+		.index("by_accountId_status", ["accountId", "status"]),
+
+	tasks: defineTable({
+		workItemId: v.id("workItems"),
+		name: v.string(),
+		status: v.union(v.literal("PENDING"), v.literal("IN_PROGRESS"), v.literal("COMPLETE")),
+		description: v.optional(v.string()),
+		dueAt: v.optional(v.number()),
+		externalId: v.optional(v.string()),
+		deletedAt: v.optional(v.number()),
+	})
+		.index("by_workItemId", ["workItemId"])
+		.index("by_externalId", ["externalId"])
+		.index("by_workItemId_status", ["workItemId", "status"]),
+
+	folders: defineTable({
+		accountId: v.optional(v.id("accounts")),
+		parentFolderId: v.optional(v.id("folders")),
+		name: v.string(),
+		deletedAt: v.optional(v.number()),
+	})
+		.index("by_accountId", ["accountId"])
+		.index("by_parentFolderId", ["parentFolderId"])
+		.index("by_accountId_parentFolderId", ["accountId", "parentFolderId"]),
+
+	documents: defineTable({
+		storageId: v.id("_storage"),
+		folderId: v.optional(v.id("folders")),
+		accountId: v.optional(v.id("accounts")),
+		workItemId: v.optional(v.id("workItems")),
+		taskId: v.optional(v.id("tasks")),
+		name: v.string(),
+		mimeType: v.optional(v.string()),
+		size: v.optional(v.number()),
+		uploadedBy: v.id("users"),
+		deletedAt: v.optional(v.number()),
+	})
+		.index("by_folderId", ["folderId"])
+		.index("by_accountId", ["accountId"])
+		.index("by_workItemId", ["workItemId"])
+		.index("by_taskId", ["taskId"])
+		.index("by_uploadedBy", ["uploadedBy"]),
 });
