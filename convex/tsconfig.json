@@ -22,9 +22,10 @@
 
     "baseUrl": ".",
     "paths": {
-      "@convex/*": ["./*"]
+      "@convex/*": ["./*"],
+      "@emails/*": ["../emails/*"]
     }
   },
-  "include": ["./**/*"],
+  "include": ["./**/*", "../emails/**/*"],
   "exclude": ["./_generated"]
 }

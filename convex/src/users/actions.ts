@@ -43,7 +43,9 @@ export const createFromMonday = internalAction({
 			});
 		}
 
-		if (!existingUser) {
+		const isNewUser = !existingUser;
+
+		if (isNewUser) {
 			// New user - create auth account.
 			await createAccount(ctx, {
 				provider: "resend-otp",
@@ -51,7 +53,7 @@ export const createFromMonday = internalAction({
 				profile: { email: args.email },
 				shouldLinkViaEmail: true,
 			});
-		} else if (existingUser.email && existingUser.email !== args.email) {
+		} else if (existingUser && existingUser.email && existingUser.email !== args.email) {
 			// Email changed - add new auth account linked to existing auth user.
 			await ctx.runMutation(internal.src.users.mutations.addAuthAccountForEmail, {
 				oldEmail: existingUser.email,
@@ -59,12 +61,21 @@ export const createFromMonday = internalAction({
 			});
 		}
 
-		await ctx.runMutation(internal.src.users.mutations.ensureUserFromMonday, {
+		const userId = await ctx.runMutation(internal.src.users.mutations.ensureUserFromMonday, {
 			email: args.email,
 			externalId: args.externalId,
 			firstName,
 			lastName,
 			phone: args.phone,
 		});
+
+		// Send welcome email to new users.
+		if (isNewUser) {
+			await ctx.runAction(internal.src.resend.actions.sendWelcomeEmail, {
+				userId,
+				email: args.email,
+				firstName,
+			});
+		}
 	},
 });
