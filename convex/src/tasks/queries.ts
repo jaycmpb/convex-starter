@@ -28,11 +28,7 @@ export const getTasksByWorkItemId = query({
 export const getTasksByWorkItemIdAndStatus = query({
   args: {
     workItemId: v.id("workItems"),
-    status: v.union(
-      v.literal("PENDING"),
-      v.literal("IN_PROGRESS"),
-      v.literal("COMPLETE")
-    ),
+    status: v.string(),
   },
   handler: async (ctx, args) => {
     return await ctx.db

@@ -65,7 +65,7 @@ export const createDocument = mutation({
 
     if (args.workItemId) {
       const workItem = await ctx.db.get(args.workItemId);
-      if (!workItem || workItem.deletedAt) {
+      if (!workItem || workItem._deletionTime) {
         throw new Error(
           JSON.stringify({
             ...ErrorCodes.NOT_FOUND,

@@ -1,5 +1,8 @@
 import { ActionCtx } from "@convex/_generated/server";
+import { clientHandlers } from "@convex/src/webhooks/monday/clients/handlers";
 import { contactHandlers } from "@convex/src/webhooks/monday/contacts/handlers";
+import { taskHandlers } from "@convex/src/webhooks/monday/tasks/handlers";
+import { workItemHandlers } from "@convex/src/webhooks/monday/workItems/handlers";
 import type { MondayHandler, MondayHandlerResult, MondayWebhookPayload } from "@convex/src/webhooks/monday/types";
 
 /**
@@ -7,7 +10,10 @@ import type { MondayHandler, MondayHandlerResult, MondayWebhookPayload } from "@
  * Add new entity types as keys, with their supported event handlers nested inside.
  */
 const handlers: Record<string, Record<string, MondayHandler>> = {
-	contact: contactHandlers,
+	"contact": contactHandlers,
+	"client": clientHandlers,
+	"task": taskHandlers,
+	"work-item": workItemHandlers,
 };
 
 /**
@@ -33,6 +39,12 @@ export const dispatchMondayEvent = async (ctx: ActionCtx, entityType: string | u
 
 	const handler = entityHandlers[eventType];
 	if (!handler) {
+		console.log("[Monday] Unhandled event type:", {
+			entityType,
+			eventType,
+			pulseId: payload.event?.pulseId ?? payload.body?.pulseId,
+			payload: JSON.stringify(payload).slice(0, 500),
+		});
 		return { status: 400, json: { success: false, error: `Unsupported event type '${eventType}' for entity '${entityType}'.` } };
 	}
 

@@ -46,7 +46,6 @@ export default defineSchema({
 	accountAccess: defineTable({
 		accountId: v.id("accounts"),
 		userId: v.id("users"),
-		accessLevel: v.union(v.literal("owner"), v.literal("viewer"), v.literal("editor")),
 	})
 		.index("by_accountId", ["accountId"])
 		.index("by_userId", ["userId"])
@@ -67,23 +66,20 @@ export default defineSchema({
 		accountId: v.id("accounts"),
 		typeId: v.id("workItemTypes"),
 		status: v.string(),
-		assignedUserId: v.optional(v.id("users")),
 		externalId: v.optional(v.string()),
 		name: v.optional(v.string()),
-		description: v.optional(v.string()),
 		dueAt: v.optional(v.number()),
-		deletedAt: v.optional(v.number()),
+		_deletionTime: v.optional(v.number()),
 	})
 		.index("by_accountId", ["accountId"])
 		.index("by_typeId", ["typeId"])
-		.index("by_assignedUserId", ["assignedUserId"])
 		.index("by_externalId", ["externalId"])
 		.index("by_accountId_status", ["accountId", "status"]),
 
 	tasks: defineTable({
 		workItemId: v.id("workItems"),
 		name: v.string(),
-		status: v.union(v.literal("PENDING"), v.literal("IN_PROGRESS"), v.literal("COMPLETE")),
+		status: v.string(),
 		description: v.optional(v.string()),
 		dueAt: v.optional(v.number()),
 		externalId: v.optional(v.string()),

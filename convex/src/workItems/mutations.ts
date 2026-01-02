@@ -1,7 +1,7 @@
-import type { Id } from "@convex/_generated/dataModel";
-import { mutation } from "@convex/_generated/server";
+import { internalMutation, mutation } from "@convex/_generated/server";
 import { ErrorCodes } from "@convex/src/_shared/errorCodes";
 import { v } from "convex/values";
+
 
 /**
  * Create a new work item type.
@@ -40,6 +40,7 @@ export const createWorkItemType = mutation({
     });
   },
 });
+
 
 /**
  * Update a work item type.
@@ -107,6 +108,7 @@ export const updateWorkItemType = mutation({
   },
 });
 
+
 /**
  * Soft delete a work item type.
  * @param id - The work item type ID.
@@ -135,15 +137,14 @@ export const deleteWorkItemType = mutation({
   },
 });
 
+
 /**
  * Create a new work item.
  * @param accountId - The account ID.
  * @param typeId - The work item type ID.
  * @param status - The work item status.
- * @param assignedUserId - Optional assigned user ID.
  * @param externalId - Optional external system ID.
  * @param name - Optional work item name.
- * @param description - Optional description.
  * @param dueAt - Optional due date timestamp.
  * @returns The ID of the created work item.
  */
@@ -152,10 +153,8 @@ export const createWorkItem = mutation({
     accountId: v.id("accounts"),
     typeId: v.id("workItemTypes"),
     status: v.string(),
-    assignedUserId: v.optional(v.id("users")),
     externalId: v.optional(v.string()),
     name: v.optional(v.string()),
-    description: v.optional(v.string()),
     dueAt: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
@@ -179,25 +178,13 @@ export const createWorkItem = mutation({
       );
     }
 
-    if (args.assignedUserId) {
-      const user = await ctx.db.get(args.assignedUserId);
-      if (!user) {
-        throw new Error(
-          JSON.stringify({
-            ...ErrorCodes.NOT_FOUND,
-            message: "Assigned user not found.",
-          })
-        );
-      }
-    }
-
     if (args.externalId) {
       const existing = await ctx.db
         .query("workItems")
         .withIndex("by_externalId", (q) => q.eq("externalId", args.externalId))
         .first();
 
-      if (existing && !existing.deletedAt) {
+      if (existing && !existing._deletionTime) {
         throw new Error(
           JSON.stringify({
             ...ErrorCodes.CONFLICT,
@@ -211,22 +198,19 @@ export const createWorkItem = mutation({
       accountId: args.accountId,
       typeId: args.typeId,
       status: args.status,
-      assignedUserId: args.assignedUserId,
       externalId: args.externalId,
       name: args.name,
-      description: args.description,
       dueAt: args.dueAt,
     });
   },
 });
 
+
 /**
  * Update a work item.
  * @param id - The work item ID.
  * @param status - Optional new status.
- * @param assignedUserId - Optional new assigned user ID.
  * @param name - Optional new name.
- * @param description - Optional new description.
  * @param dueAt - Optional new due date timestamp.
  * @returns The updated work item document.
  */
@@ -234,14 +218,12 @@ export const updateWorkItem = mutation({
   args: {
     id: v.id("workItems"),
     status: v.optional(v.string()),
-    assignedUserId: v.optional(v.id("users")),
     name: v.optional(v.string()),
-    description: v.optional(v.string()),
     dueAt: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const workItem = await ctx.db.get(args.id);
-    if (!workItem || workItem.deletedAt) {
+    if (!workItem || workItem._deletionTime) {
       throw new Error(
         JSON.stringify({
           ...ErrorCodes.NOT_FOUND,
@@ -250,23 +232,9 @@ export const updateWorkItem = mutation({
       );
     }
 
-    if (args.assignedUserId) {
-      const user = await ctx.db.get(args.assignedUserId);
-      if (!user) {
-        throw new Error(
-          JSON.stringify({
-            ...ErrorCodes.NOT_FOUND,
-            message: "Assigned user not found.",
-          })
-        );
-      }
-    }
-
     const updates: {
       status?: string;
-      assignedUserId?: Id<"users">;
       name?: string;
-      description?: string;
       dueAt?: number;
     } = {};
 
@@ -274,16 +242,8 @@ export const updateWorkItem = mutation({
       updates.status = args.status;
     }
 
-    if (args.assignedUserId !== undefined) {
-      updates.assignedUserId = args.assignedUserId;
-    }
-
     if (args.name !== undefined) {
       updates.name = args.name;
-    }
-
-    if (args.description !== undefined) {
-      updates.description = args.description;
     }
 
     if (args.dueAt !== undefined) {
@@ -296,6 +256,7 @@ export const updateWorkItem = mutation({
   },
 });
 
+
 /**
  * Soft delete a work item.
  * @param id - The work item ID.
@@ -307,7 +268,7 @@ export const deleteWorkItem = mutation({
   },
   handler: async (ctx, args) => {
     const workItem = await ctx.db.get(args.id);
-    if (!workItem || workItem.deletedAt) {
+    if (!workItem || workItem._deletionTime) {
       throw new Error(
         JSON.stringify({
           ...ErrorCodes.NOT_FOUND,
@@ -317,12 +278,13 @@ export const deleteWorkItem = mutation({
     }
 
     await ctx.db.patch(args.id, {
-      deletedAt: Date.now(),
+      _deletionTime: Date.now(),
     });
 
     return args.id;
   },
 });
+
 
 /**
  * Upsert a work item by external ID.
@@ -331,9 +293,7 @@ export const deleteWorkItem = mutation({
  * @param typeId - The work item type ID.
  * @param status - The work item status.
  * @param externalId - The external system ID.
- * @param assignedUserId - Optional assigned user ID.
  * @param name - Optional work item name.
- * @param description - Optional description.
  * @param dueAt - Optional due date timestamp.
  * @returns The ID of the created or updated work item.
  */
@@ -343,9 +303,7 @@ export const upsertWorkItemByExternalId = mutation({
     typeId: v.id("workItemTypes"),
     status: v.string(),
     externalId: v.string(),
-    assignedUserId: v.optional(v.id("users")),
     name: v.optional(v.string()),
-    description: v.optional(v.string()),
     dueAt: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
@@ -359,11 +317,9 @@ export const upsertWorkItemByExternalId = mutation({
         accountId: args.accountId,
         typeId: args.typeId,
         status: args.status,
-        assignedUserId: args.assignedUserId,
         name: args.name,
-        description: args.description,
         dueAt: args.dueAt,
-        deletedAt: undefined,
+        _deletionTime: undefined,
       });
       return existing._id;
     }
@@ -372,11 +328,97 @@ export const upsertWorkItemByExternalId = mutation({
       accountId: args.accountId,
       typeId: args.typeId,
       status: args.status,
-      assignedUserId: args.assignedUserId,
       externalId: args.externalId,
       name: args.name,
-      description: args.description,
       dueAt: args.dueAt,
     });
+  },
+});
+
+
+/**
+ * Upsert a work item from Monday.com webhook data.
+ * Looks up account by external ID and ensures work item type exists.
+ * @param accountExternalId - The Monday.com client pulse ID.
+ * @param typeName - The work item type name (e.g., "Personal Tax Returns").
+ * @param externalId - The Monday.com work item pulse ID.
+ * @param status - The work item status.
+ * @param name - Optional work item name.
+ * @param dueAt - Optional due date timestamp.
+ * @returns The ID of the created or updated work item, or null if account not found.
+ */
+export const upsertWorkItemFromMonday = internalMutation({
+  args: {
+    accountExternalId: v.string(),
+    typeName: v.string(),
+    externalId: v.string(),
+    status: v.string(),
+    name: v.optional(v.string()),
+    dueAt: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    // Look up the account by external ID.
+    const account = await ctx.db
+      .query("accounts")
+      .withIndex("by_externalId", (q) => q.eq("externalId", args.accountExternalId))
+      .first();
+
+    if (!account || account.deletedAt) {
+      return { success: false, error: "Account not found for client external ID." };
+    }
+
+    // Look up or create the work item type.
+    let workItemType = await ctx.db
+      .query("workItemTypes")
+      .withIndex("by_name", (q) => q.eq("name", args.typeName))
+      .first();
+
+    if (!workItemType || workItemType.deletedAt) {
+      // Create the work item type with default status config.
+      const typeId = await ctx.db.insert("workItemTypes", {
+        name: args.typeName,
+        statusConfig: [
+          { status: "Not Started", progress: 0 },
+          { status: "Waiting for Client", progress: 10 },
+          { status: "Reviewing", progress: 50 },
+          { status: "Ready for Review", progress: 75 },
+          { status: "Complete", progress: 100 },
+        ],
+      });
+      workItemType = await ctx.db.get(typeId);
+    }
+
+    if (!workItemType) {
+      return { success: false, error: "Failed to create work item type." };
+    }
+
+    // Upsert the work item.
+    const existing = await ctx.db
+      .query("workItems")
+      .withIndex("by_externalId", (q) => q.eq("externalId", args.externalId))
+      .first();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        accountId: account._id,
+        typeId: workItemType._id,
+        status: args.status ?? existing.status,
+        name: args.name,
+        dueAt: args.dueAt,
+        _deletionTime: undefined,
+      });
+      return { success: true, workItemId: existing._id };
+    }
+
+    const workItemId = await ctx.db.insert("workItems", {
+      accountId: account._id,
+      typeId: workItemType._id,
+      status: args.status ?? "Not Started",
+      externalId: args.externalId,
+      name: args.name,
+      dueAt: args.dueAt,
+    });
+
+    return { success: true, workItemId };
   },
 });

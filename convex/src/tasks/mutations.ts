@@ -1,4 +1,4 @@
-import { mutation } from "@convex/_generated/server";
+import { internalMutation, mutation } from "@convex/_generated/server";
 import { ErrorCodes } from "@convex/src/_shared/errorCodes";
 import { v } from "convex/values";
 
@@ -16,18 +16,14 @@ export const createTask = mutation({
   args: {
     workItemId: v.id("workItems"),
     name: v.string(),
-    status: v.union(
-      v.literal("PENDING"),
-      v.literal("IN_PROGRESS"),
-      v.literal("COMPLETE")
-    ),
+    status: v.string(),
     description: v.optional(v.string()),
     dueAt: v.optional(v.number()),
     externalId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const workItem = await ctx.db.get(args.workItemId);
-    if (!workItem || workItem.deletedAt) {
+    if (!workItem || workItem._deletionTime) {
       throw new Error(
         JSON.stringify({
           ...ErrorCodes.NOT_FOUND,
@@ -76,13 +72,7 @@ export const updateTask = mutation({
   args: {
     id: v.id("tasks"),
     name: v.optional(v.string()),
-    status: v.optional(
-      v.union(
-        v.literal("PENDING"),
-        v.literal("IN_PROGRESS"),
-        v.literal("COMPLETE")
-      )
-    ),
+    status: v.optional(v.string()),
     description: v.optional(v.string()),
     dueAt: v.optional(v.number()),
   },
@@ -99,7 +89,7 @@ export const updateTask = mutation({
 
     const updates: {
       name?: string;
-      status?: "PENDING" | "IN_PROGRESS" | "COMPLETE";
+      status?: string;
       description?: string;
       dueAt?: number;
     } = {};
@@ -169,11 +159,7 @@ export const upsertTaskByExternalId = mutation({
   args: {
     workItemId: v.id("workItems"),
     name: v.string(),
-    status: v.union(
-      v.literal("PENDING"),
-      v.literal("IN_PROGRESS"),
-      v.literal("COMPLETE")
-    ),
+    status: v.string(),
     externalId: v.string(),
     description: v.optional(v.string()),
     dueAt: v.optional(v.number()),
@@ -204,6 +190,71 @@ export const upsertTaskByExternalId = mutation({
       dueAt: args.dueAt,
       externalId: args.externalId,
     });
+  },
+});
+
+
+/**
+ * Upsert a task from Monday.com sub-item webhook data.
+ * Looks up work item by external ID (parent item ID).
+ * @param workItemExternalId - The Monday.com parent item pulse ID.
+ * @param externalId - The Monday.com sub-item pulse ID.
+ * @param name - The task name.
+ * @param status - The Monday.com status label (stored as-is).
+ * @param description - Optional task description (Details column).
+ * @param dueAt - Optional due date timestamp.
+ * @returns The ID of the created or updated task, or error if work item not found.
+ */
+export const upsertTaskFromMonday = internalMutation({
+  args: {
+    workItemExternalId: v.string(),
+    externalId: v.string(),
+    name: v.string(),
+    status: v.optional(v.string()),
+    description: v.optional(v.string()),
+    dueAt: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    // Look up the work item by external ID (parent item).
+    const workItem = await ctx.db
+      .query("workItems")
+      .withIndex("by_externalId", (q) => q.eq("externalId", args.workItemExternalId))
+      .first();
+
+    if (!workItem || workItem._deletionTime) {
+      return { success: false, error: "Work item not found for parent external ID." };
+    }
+
+    const status = args.status ?? "Not Started";
+
+    // Upsert the task.
+    const existing = await ctx.db
+      .query("tasks")
+      .withIndex("by_externalId", (q) => q.eq("externalId", args.externalId))
+      .first();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        workItemId: workItem._id,
+        name: args.name,
+        status,
+        description: args.description,
+        dueAt: args.dueAt,
+        deletedAt: undefined,
+      });
+      return { success: true, taskId: existing._id };
+    }
+
+    const taskId = await ctx.db.insert("tasks", {
+      workItemId: workItem._id,
+      name: args.name,
+      status,
+      description: args.description,
+      dueAt: args.dueAt,
+      externalId: args.externalId,
+    });
+
+    return { success: true, taskId };
   },
 });
 
