@@ -90,14 +90,20 @@ export default defineSchema({
 		.index("by_workItemId_status", ["workItemId", "status"]),
 
 	folders: defineTable({
-		accountId: v.optional(v.id("accounts")),
+		accountId: v.id("accounts"),
 		parentFolderId: v.optional(v.id("folders")),
 		name: v.string(),
+		/** Materialized path for fast breadcrumb/ancestor queries. Format: "/folderId1/folderId2/..." */
+		path: v.string(),
+		/** Depth level (0 = root folder). */
+		depth: v.number(),
 		deletedAt: v.optional(v.number()),
 	})
 		.index("by_accountId", ["accountId"])
 		.index("by_parentFolderId", ["parentFolderId"])
-		.index("by_accountId_parentFolderId", ["accountId", "parentFolderId"]),
+		.index("by_accountId_parentFolderId", ["accountId", "parentFolderId"])
+		.index("by_path", ["path"])
+		.index("by_accountId_depth", ["accountId", "depth"]),
 
 	documents: defineTable({
 		storageId: v.id("_storage"),
