@@ -1,3 +1,4 @@
+import { getAuthUserId } from "@convex-dev/auth/server";
 import { internalMutation, mutation } from "@convex/_generated/server";
 import { ErrorCodes } from "@convex/src/_shared/errorCodes";
 import { v } from "convex/values";
@@ -303,5 +304,61 @@ export const addAuthAccountForEmail = internalMutation({
 		await ctx.db.delete(existingAccount._id);
 
 		return newAccountId;
+	},
+});
+
+/**
+ * Set the currently selected account for the authenticated user.
+ * Validates that the user has access to the account before setting it.
+ * @param accountId - The account ID to select.
+ * @returns The updated user document.
+ */
+export const setSelectedAccount = mutation({
+	args: {
+		accountId: v.id("accounts"),
+	},
+	handler: async (ctx, args) => {
+		const userId = await getAuthUserId(ctx);
+		if (!userId) {
+			throw new Error(
+				JSON.stringify({
+					...ErrorCodes.NOT_AUTHENTICATED,
+					message: "You must be authenticated to set a selected account.",
+				}),
+			);
+		}
+
+		// Verify the account exists and is not deleted.
+		const account = await ctx.db.get(args.accountId);
+		if (!account || account.deletedAt) {
+			throw new Error(
+				JSON.stringify({
+					...ErrorCodes.NOT_FOUND,
+					message: "Account not found.",
+				}),
+			);
+		}
+
+		// Verify the user has access to this account.
+		const access = await ctx.db
+			.query("accountAccess")
+			.withIndex("by_accountId_userId", (q) => q.eq("accountId", args.accountId).eq("userId", userId))
+			.first();
+
+		if (!access) {
+			throw new Error(
+				JSON.stringify({
+					...ErrorCodes.FORBIDDEN,
+					message: "You do not have access to this account.",
+				}),
+			);
+		}
+
+		// Update the user's selected account.
+		await ctx.db.patch(userId, {
+			selectedAccountId: args.accountId,
+		});
+
+		return await ctx.db.get(userId);
 	},
 });

@@ -1,7 +1,7 @@
 import { EmailLayout } from "@emails/_components";
 import { Heading, Section, Text } from "@react-email/components";
 
-interface OtpEmailProps {
+interface OTPEmailProps {
 	/** The one-time password code. */
 	code: string;
 	/** How long the code is valid for (e.g., "10 minutes"). */
@@ -11,7 +11,7 @@ interface OtpEmailProps {
 /**
  * Email template for OTP authentication codes.
  */
-export function OtpEmail({ code, expiresIn = "10 minutes" }: OtpEmailProps) {
+export function OTPEmail({ code, expiresIn = "10 minutes" }: OTPEmailProps) {
 	return (
 		<EmailLayout preview={`Your verification code is ${code}`}>
 			<Section className="px-10 py-12">
@@ -32,9 +32,9 @@ export function OtpEmail({ code, expiresIn = "10 minutes" }: OtpEmailProps) {
 }
 
 /** Preview props for development. */
-OtpEmail.PreviewProps = {
+OTPEmail.PreviewProps = {
 	code: "482916",
 	expiresIn: "10 minutes",
-} satisfies OtpEmailProps;
+} satisfies OTPEmailProps;
 
-export default OtpEmail;
+export default OTPEmail;

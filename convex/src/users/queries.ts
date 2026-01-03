@@ -1,5 +1,20 @@
+import { getAuthUserId } from "@convex-dev/auth/server";
 import { internalQuery, query } from "@convex/_generated/server";
 import { v } from "convex/values";
+
+/**
+ * Get the currently authenticated user.
+ * @returns The user document or null if not authenticated.
+ */
+export const me = query({
+	handler: async (ctx) => {
+		const userId = await getAuthUserId(ctx);
+		if (!userId) {
+			return null;
+		}
+		return await ctx.db.get(userId);
+	},
+});
 
 /**
  * Internal query to get a user by their external ID.
@@ -97,5 +112,57 @@ export const getClientUsers = query({
 			.query("users")
 			.withIndex("by_isStaff", (q) => q.eq("isStaff", false))
 			.collect();
+	},
+});
+
+/**
+ * Get the currently authenticated user with their accounts and resolved selected account.
+ * Auto-selects the first accessible account if no account is currently selected.
+ * @returns The user document with accounts array and resolved selected account, or null if not authenticated.
+ */
+export const meWithSelectedAccount = query({
+	handler: async (ctx) => {
+		const userId = await getAuthUserId(ctx);
+		if (!userId) {
+			return null;
+		}
+
+		const user = await ctx.db.get(userId);
+		if (!user) {
+			return null;
+		}
+
+		// Get all accounts the user has access to.
+		const accessRecords = await ctx.db
+			.query("accountAccess")
+			.withIndex("by_userId", (q) => q.eq("userId", userId))
+			.collect();
+
+		const accountIds = accessRecords.map((access) => access.accountId);
+		const accounts = await Promise.all(accountIds.map((id) => ctx.db.get(id)));
+
+		const accessibleAccounts = accounts.filter((account): account is NonNullable<typeof account> => account !== null && account.deletedAt === undefined);
+
+		// Determine the selected account.
+		let selectedAccount = null;
+		if (user.selectedAccountId) {
+			// Verify the selected account still exists and user has access.
+			const account = accessibleAccounts.find((acc) => acc._id === user.selectedAccountId);
+			if (account) {
+				selectedAccount = account;
+			}
+		}
+
+		// Auto-select first account if none is selected or the selected account is invalid.
+		// Note: This doesn't mutate the user - the frontend should call setSelectedAccount if needed.
+		if (!selectedAccount && accessibleAccounts.length > 0) {
+			selectedAccount = accessibleAccounts[0];
+		}
+
+		return {
+			user,
+			accounts: accessibleAccounts,
+			selectedAccount,
+		};
 	},
 });

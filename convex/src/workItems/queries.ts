@@ -133,3 +133,38 @@ export const getWorkItemByExternalId = query({
 		return workItem;
 	},
 });
+
+/**
+ * Get all work items for an account with their associated tasks (excluding soft-deleted ones).
+ * @param accountId - The account ID.
+ * @returns Array of work items with their tasks for the account.
+ */
+export const getWorkItemsWithTasks = query({
+	args: {
+		accountId: v.id("accounts"),
+	},
+	handler: async (ctx, args) => {
+		const workItems = await ctx.db
+			.query("workItems")
+			.withIndex("by_accountId", (q) => q.eq("accountId", args.accountId))
+			.filter((q) => q.eq(q.field("_deletionTime"), undefined))
+			.collect();
+
+		const workItemsWithTasks = await Promise.all(
+			workItems.map(async (workItem) => {
+				const tasks = await ctx.db
+					.query("tasks")
+					.withIndex("by_workItemId", (q) => q.eq("workItemId", workItem._id))
+					.filter((q) => q.eq(q.field("deletedAt"), undefined))
+					.collect();
+
+				return {
+					...workItem,
+					tasks,
+				};
+			}),
+		);
+
+		return workItemsWithTasks;
+	},
+});

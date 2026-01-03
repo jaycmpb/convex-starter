@@ -28,6 +28,7 @@ export default defineSchema({
 		externalId: v.optional(v.string()),
 		firstName: v.optional(v.string()),
 		lastName: v.optional(v.string()),
+		selectedAccountId: v.optional(v.id("accounts")),
 	})
 		.index("email", ["email"])
 		.index("phone", ["phone"])

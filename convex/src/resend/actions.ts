@@ -1,10 +1,11 @@
 import { Email } from "@convex-dev/auth/providers/Email";
 import { internalAction } from "@convex/_generated/server";
+import { OTPEmail } from "@emails/otp";
+import { WelcomeEmail } from "@emails/welcome";
 import { RandomReader, generateRandomString } from "@oslojs/crypto/random";
 import { render } from "@react-email/render";
 import { v } from "convex/values";
 import { Resend } from "resend";
-import { WelcomeEmail } from "../../../emails/welcome";
 
 /** Resend OTP provider for authentication. */
 export const ResendOTP = Email({
@@ -24,11 +25,13 @@ export const ResendOTP = Email({
 	},
 	async sendVerificationRequest({ identifier: email, provider, token }) {
 		const resend = new Resend(provider.apiKey);
+		const html = await render(OTPEmail({ code: token }));
+
 		const { error } = await resend.emails.send({
 			from: "Do Not Reply <no-reply@notifications.ryzeware.com>",
 			to: email,
 			subject: "Your Verification Code",
-			html: `<p>Your verification code is <b>${token}</b>.</p>`,
+			html,
 		});
 
 		if (error) {
