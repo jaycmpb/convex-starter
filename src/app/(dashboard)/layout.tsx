@@ -30,6 +30,8 @@ import {
 	MessageSquare,
 	Landmark,
 } from "lucide-react";
+import { NotificationListener } from "@/components/notifications/notification-listener";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 
 export default function DashboardLayout({
 	children,
@@ -61,9 +63,11 @@ export default function DashboardLayout({
 						</SidebarFooter>
 					</Sidebar>
 					<SidebarInset className="flex-1">
+						<NotificationListener />
 						<header className="flex h-16 items-center gap-4 border-b border-border px-6">
 							<SidebarTrigger />
 							<div className="ml-auto flex items-center gap-4">
+								<NotificationBell />
 								<AccountSelector />
 							</div>
 						</header>

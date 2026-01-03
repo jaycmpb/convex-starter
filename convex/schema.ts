@@ -123,4 +123,19 @@ export default defineSchema({
 		.index("by_workItemId", ["workItemId"])
 		.index("by_taskId", ["taskId"])
 		.index("by_uploadedBy", ["uploadedBy"]),
+
+	notifications: defineTable({
+		userId: v.id("users"),
+		accountId: v.id("accounts"),
+		type: v.union(v.literal("task_assigned"), v.literal("task_completed"), v.literal("task_reminder"), v.literal("task_reopened"), v.literal("workitem_completed")),
+		title: v.string(),
+		message: v.string(),
+		taskId: v.optional(v.id("tasks")),
+		workItemId: v.optional(v.id("workItems")),
+		readAt: v.optional(v.number()),
+		emailSentAt: v.optional(v.number()),
+	})
+		.index("by_userId", ["userId"])
+		.index("by_userId_readAt", ["userId", "readAt"])
+		.index("by_accountId", ["accountId"]),
 });

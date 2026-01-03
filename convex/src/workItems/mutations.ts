@@ -1,5 +1,6 @@
 import { internalMutation, mutation } from "@convex/_generated/server";
 import { ErrorCodes } from "@convex/src/_shared/errorCodes";
+import { internal } from "@convex/_generated/api";
 import { v } from "convex/values";
 
 /**
@@ -227,6 +228,10 @@ export const updateWorkItem = mutation({
 			);
 		}
 
+		// Track if this update is completing the work item.
+		const previousStatus = workItem.status.toLowerCase();
+		const wasCompleted = previousStatus === "complete" || previousStatus === "completed" || previousStatus === "done";
+
 		const updates: {
 			status?: string;
 			name?: string;
@@ -247,7 +252,32 @@ export const updateWorkItem = mutation({
 
 		await ctx.db.patch(args.id, updates);
 
-		return await ctx.db.get(args.id);
+		const updatedWorkItem = await ctx.db.get(args.id);
+		if (!updatedWorkItem) {
+			throw new Error(
+				JSON.stringify({
+					...ErrorCodes.NOT_FOUND,
+					message: "Work item not found after update.",
+				}),
+			);
+		}
+
+		// Check if the work item was just completed.
+		const newStatus = updatedWorkItem.status.toLowerCase();
+		const isNowCompleted = newStatus === "complete" || newStatus === "completed" || newStatus === "done";
+
+		if (!wasCompleted && isNowCompleted && args.status !== undefined) {
+			// Create notifications for all users with access to the account.
+			await ctx.scheduler.runAfter(0, internal.src.notifications.helpers.createNotificationsForAccountUsers, {
+				accountId: updatedWorkItem.accountId,
+				type: "workitem_completed",
+				title: "Work Item Completed",
+				message: `The work item "${updatedWorkItem.name || "Work Item"}" has been marked as complete.`,
+				workItemId: updatedWorkItem._id,
+			});
+		}
+
+		return updatedWorkItem;
 	},
 });
 

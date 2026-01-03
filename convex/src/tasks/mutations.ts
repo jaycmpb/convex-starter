@@ -1,5 +1,6 @@
 import { internalMutation, mutation } from "@convex/_generated/server";
 import { ErrorCodes } from "@convex/src/_shared/errorCodes";
+import { internal } from "@convex/_generated/api";
 import { v } from "convex/values";
 
 /**
@@ -112,7 +113,54 @@ export const updateTask = mutation({
 
 		await ctx.db.patch(args.id, updates);
 
-		return await ctx.db.get(args.id);
+		const updatedTask = await ctx.db.get(args.id);
+		if (!updatedTask) {
+			throw new Error(
+				JSON.stringify({
+					...ErrorCodes.NOT_FOUND,
+					message: "Task not found after update.",
+				}),
+			);
+		}
+
+		// Check if task was marked as completed.
+		const completedStatuses = ["done", "completed", "complete", "closed"];
+		const wasIncomplete = !completedStatuses.includes(task.status.toLowerCase());
+		const isNowComplete = completedStatuses.includes(updatedTask.status.toLowerCase());
+
+		if (args.status !== undefined) {
+			// Get work item to find account ID.
+			const workItem = await ctx.db.get(updatedTask.workItemId);
+			if (workItem && !workItem._deletionTime) {
+				// Check if task was just completed.
+				if (wasIncomplete && isNowComplete) {
+					await ctx.scheduler.runAfter(0, internal.src.notifications.helpers.createNotificationsForAccountUsers, {
+						accountId: workItem.accountId,
+						type: "task_completed",
+						title: "Task Completed",
+						message: `The task "${updatedTask.name}" has been marked as complete.`,
+						taskId: updatedTask._id,
+						workItemId: updatedTask.workItemId,
+					});
+				}
+
+				// Check if task was reopened (complete → incomplete).
+				const wasComplete = completedStatuses.includes(task.status.toLowerCase());
+				const isNowIncomplete = !completedStatuses.includes(updatedTask.status.toLowerCase());
+				if (wasComplete && isNowIncomplete) {
+					await ctx.scheduler.runAfter(0, internal.src.notifications.helpers.createNotificationsForAccountUsers, {
+						accountId: workItem.accountId,
+						type: "task_reopened",
+						title: "Task Reopened",
+						message: `The task "${updatedTask.name}" has been reopened.`,
+						taskId: updatedTask._id,
+						workItemId: updatedTask.workItemId,
+					});
+				}
+			}
+		}
+
+		return updatedTask;
 	},
 });
 
@@ -171,6 +219,9 @@ export const upsertTaskByExternalId = mutation({
 			.first();
 
 		if (existing) {
+			const wasCompleted = existing.status.toLowerCase() !== "done" && existing.status.toLowerCase() !== "completed" && existing.status.toLowerCase() !== "closed";
+			const isNowCompleted = args.status.toLowerCase() === "done" || args.status.toLowerCase() === "completed" || args.status.toLowerCase() === "closed";
+
 			await ctx.db.patch(existing._id, {
 				workItemId: args.workItemId,
 				name: args.name,
@@ -179,10 +230,36 @@ export const upsertTaskByExternalId = mutation({
 				dueAt: args.dueAt,
 				deletedAt: undefined,
 			});
+
+			// Check if task was just completed.
+			if (wasCompleted && isNowCompleted) {
+				const workItem = await ctx.db.get(args.workItemId);
+				if (workItem && !workItem._deletionTime) {
+					await ctx.scheduler.runAfter(0, internal.src.notifications.helpers.createNotificationsForAccountUsers, {
+						accountId: workItem.accountId,
+						type: "task_completed",
+						title: "Task Completed",
+						message: `The task "${args.name}" has been marked as complete.`,
+						taskId: existing._id,
+						workItemId: args.workItemId,
+					});
+				}
+			}
+
 			return existing._id;
 		}
 
-		return await ctx.db.insert("tasks", {
+		const workItem = await ctx.db.get(args.workItemId);
+		if (!workItem || workItem._deletionTime) {
+			throw new Error(
+				JSON.stringify({
+					...ErrorCodes.NOT_FOUND,
+					message: "Work item not found.",
+				}),
+			);
+		}
+
+		const taskId = await ctx.db.insert("tasks", {
 			workItemId: args.workItemId,
 			name: args.name,
 			status: args.status,
@@ -190,6 +267,18 @@ export const upsertTaskByExternalId = mutation({
 			dueAt: args.dueAt,
 			externalId: args.externalId,
 		});
+
+		// Create notifications for all users with access to the account.
+		await ctx.scheduler.runAfter(0, internal.src.notifications.helpers.createNotificationsForAccountUsers, {
+			accountId: workItem.accountId,
+			type: "task_assigned",
+			title: "New Task Assigned",
+			message: `A new task "${args.name}" has been assigned.`,
+			taskId,
+			workItemId: args.workItemId,
+		});
+
+		return taskId;
 	},
 });
 
@@ -233,6 +322,20 @@ export const upsertTaskFromMonday = internalMutation({
 			.first();
 
 		if (existing) {
+			const completedStatuses = ["done", "completed", "complete", "closed"];
+			const wasIncomplete = !completedStatuses.includes(existing.status.toLowerCase());
+			const isNowComplete = completedStatuses.includes(status.toLowerCase());
+
+			console.log("[Task] Status change:", {
+				taskId: existing._id,
+				taskName: args.name,
+				oldStatus: existing.status,
+				newStatus: status,
+				wasIncomplete,
+				isNowComplete,
+				willNotify: wasIncomplete && isNowComplete,
+			});
+
 			await ctx.db.patch(existing._id, {
 				workItemId: workItem._id,
 				name: args.name,
@@ -241,6 +344,33 @@ export const upsertTaskFromMonday = internalMutation({
 				dueAt: args.dueAt,
 				deletedAt: undefined,
 			});
+
+			// Check if task was just completed.
+			if (wasIncomplete && isNowComplete) {
+				await ctx.scheduler.runAfter(0, internal.src.notifications.helpers.createNotificationsForAccountUsers, {
+					accountId: workItem.accountId,
+					type: "task_completed",
+					title: "Task Completed",
+					message: `The task "${args.name}" has been marked as complete.`,
+					taskId: existing._id,
+					workItemId: workItem._id,
+				});
+			}
+
+			// Check if task was reopened (complete → incomplete).
+			const wasComplete = completedStatuses.includes(existing.status.toLowerCase());
+			const isNowIncomplete = !completedStatuses.includes(status.toLowerCase());
+			if (wasComplete && isNowIncomplete) {
+				await ctx.scheduler.runAfter(0, internal.src.notifications.helpers.createNotificationsForAccountUsers, {
+					accountId: workItem.accountId,
+					type: "task_reopened",
+					title: "Task Reopened",
+					message: `The task "${args.name}" has been reopened.`,
+					taskId: existing._id,
+					workItemId: workItem._id,
+				});
+			}
+
 			return { success: true, taskId: existing._id };
 		}
 
@@ -251,6 +381,16 @@ export const upsertTaskFromMonday = internalMutation({
 			description: args.description,
 			dueAt: args.dueAt,
 			externalId: args.externalId,
+		});
+
+		// Create notifications for all users with access to the account.
+		await ctx.scheduler.runAfter(0, internal.src.notifications.helpers.createNotificationsForAccountUsers, {
+			accountId: workItem.accountId,
+			type: "task_assigned",
+			title: "New Task Assigned",
+			message: `A new task "${args.name}" has been assigned.`,
+			taskId,
+			workItemId: workItem._id,
 		});
 
 		return { success: true, taskId };
