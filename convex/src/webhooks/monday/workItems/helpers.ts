@@ -1,12 +1,5 @@
 import { fetchItemWithSubitems, type MondaySubItem } from "@convex/src/webhooks/monday/client";
-import {
-	extractValue,
-	type MondayColumnValue,
-	parseColumnValues,
-	TASK_COLUMNS,
-	WORK_ITEM_BOARDS,
-	WORK_ITEM_COLUMNS,
-} from "@convex/src/webhooks/monday/helpers";
+import { extractValue, type MondayColumnValue, parseColumnValues, TASK_COLUMNS, WORK_ITEM_BOARDS, WORK_ITEM_COLUMNS } from "@convex/src/webhooks/monday/helpers";
 import type { MondayWebhookPayload } from "@convex/src/webhooks/monday/types";
 
 export type NormalizedTask = {
@@ -106,7 +99,6 @@ const normalizeSubItem = (subitem: MondaySubItem): NormalizedTask => {
 	};
 };
 
-
 /**
  * Normalize work item data from Monday.com webhook payload and column values.
  */
@@ -135,7 +127,6 @@ export const normalizeWorkItem = (input: {
 
 	return { name, externalId, clientExternalId, status, dueAt, typeName, tasks };
 };
-
 
 /**
  * Fetch and enrich a Monday.com work item with sub-items by pulse ID.
@@ -167,4 +158,3 @@ export const ensureWorkItem = async (payload: MondayWebhookPayload) => {
 		event: { ...payload.event, pulseName: item.name, groupId: item.group?.id, boardId: item.board?.id },
 	};
 };
-

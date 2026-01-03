@@ -10,10 +10,7 @@ interface HeaderProps {
 /**
  * Email header component with clean monochromatic design.
  */
-export function Header({
-	title = "MAD",
-	subtitle = "My Accounting Dashboard",
-}: HeaderProps) {
+export function Header({ title = "MAD", subtitle = "My Accounting Dashboard" }: HeaderProps) {
 	return (
 		<Section className="bg-black px-10 py-6">
 			<Heading as="h1" className="m-0 text-white text-2xl font-bold tracking-tight mb-0">

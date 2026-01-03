@@ -125,10 +125,7 @@ The project includes a comprehensive error handling system:
 For business logic errors that are expected:
 
 ```typescript
-return c.json(
-  { ...ErrorCodes.NOT_FOUND, message: "Counter not found." },
-  ErrorCodes.NOT_FOUND.status as any
-);
+return c.json({ ...ErrorCodes.NOT_FOUND, message: "Counter not found." }, ErrorCodes.NOT_FOUND.status as any);
 ```
 
 ### Unexpected Errors (With Logging)
@@ -136,11 +133,7 @@ return c.json(
 For unexpected errors that should be logged to PostHog:
 
 ```typescript
-const errorData = await logAndReturnError(
-  c,
-  ErrorCodes.INTERNAL_ERROR,
-  "Failed to create counter."
-);
+const errorData = await logAndReturnError(c, ErrorCodes.INTERNAL_ERROR, "Failed to create counter.");
 return c.json(errorData, errorData.status);
 ```
 
@@ -159,9 +152,9 @@ Error logging is automatically handled via PostHog:
 
 1. **Create a new feature folder** in `convex/src/[feature-name]/`
 2. **Add functions** following the pattern:
-   - `mutations.ts` - Database write operations
-   - `queries.ts` - Database read operations
-   - `http.ts` - HTTP endpoints
+    - `mutations.ts` - Database write operations
+    - `queries.ts` - Database read operations
+    - `http.ts` - HTTP endpoints
 3. **Register routes** in `convex/http.ts`
 4. **Follow the established patterns** for error handling and validation
 

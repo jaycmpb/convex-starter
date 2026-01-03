@@ -9,14 +9,12 @@ import type { MondayHandler, MondayHandlerResult } from "@convex/src/webhooks/mo
  */
 const VALID_BOARD_IDS = Object.keys(WORK_ITEM_BOARDS);
 
-
 /**
  * Check if the event is from a valid work item board.
  */
 const isValidWorkItemBoard = (boardId: string | undefined): boolean => {
 	return !!boardId && VALID_BOARD_IDS.includes(boardId);
 };
-
 
 /**
  * Sync a work item and its tasks to Convex.
@@ -91,7 +89,6 @@ const syncWorkItem = async (ctx: ActionCtx, workItem: NormalizedWorkItem): Promi
 	}
 };
 
-
 /**
  * Handle Monday.com column updates by updating a work item.
  * Only processes events from valid work item boards.
@@ -115,7 +112,6 @@ export const handleUpdateColumnValue: MondayHandler = async (ctx, { body, event 
 
 	return syncWorkItem(ctx, normalized);
 };
-
 
 /**
  * Handle Monday.com item creation (create_pulse) for work items.
@@ -145,7 +141,6 @@ export const handleCreatePulse: MondayHandler = async (ctx, payload) => {
 	return syncWorkItem(ctx, normalized);
 };
 
-
 /**
  * Handle Monday.com work item name changes.
  * Reuses the same logic as column updates since we fetch fresh data.
@@ -173,7 +168,6 @@ export const handleUpdateName: MondayHandler = async (ctx, payload) => {
 	return syncWorkItem(ctx, normalized);
 };
 
-
 /**
  * All work item event handlers mapped by Monday.com event type.
  */
@@ -182,4 +176,3 @@ export const workItemHandlers: Record<string, MondayHandler> = {
 	create_pulse: handleCreatePulse,
 	update_name: handleUpdateName,
 };
-

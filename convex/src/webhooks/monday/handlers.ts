@@ -10,9 +10,9 @@ import type { MondayHandler, MondayHandlerResult, MondayWebhookPayload } from "@
  * Add new entity types as keys, with their supported event handlers nested inside.
  */
 const handlers: Record<string, Record<string, MondayHandler>> = {
-	"contact": contactHandlers,
-	"client": clientHandlers,
-	"task": taskHandlers,
+	contact: contactHandlers,
+	client: clientHandlers,
+	task: taskHandlers,
 	"work-item": workItemHandlers,
 };
 

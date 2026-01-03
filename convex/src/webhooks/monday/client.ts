@@ -59,7 +59,6 @@ export const fetchItem = async (pulseId: number): Promise<MondayItem | null> => 
 	return res?.items?.[0] ?? null;
 };
 
-
 /**
  * Fetch a Monday.com item with its sub-items by pulse ID via GraphQL.
  * Includes linked items for board_relation columns and all sub-items.
@@ -105,7 +104,6 @@ export const fetchItemWithSubitems = async (pulseId: number): Promise<MondayItem
 	const res = await monday.request<ItemsQueryResponse>(query, variables);
 	return res?.items?.[0] ?? null;
 };
-
 
 export type MondaySubItemWithParent = MondaySubItem & {
 	parent_item: { id: string; board: { id: string } };

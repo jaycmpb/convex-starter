@@ -52,11 +52,7 @@ const mapClientType = (mondayType: string | undefined): "personal" | "business" 
 /**
  * Normalize client data from Monday.com webhook payload and column values.
  */
-export const normalizeClient = (input: {
-	body: Record<string, any>;
-	event: Record<string, any>;
-	columnValues?: MondayColumnValue[];
-}): NormalizedClient => {
+export const normalizeClient = (input: { body: Record<string, any>; event: Record<string, any>; columnValues?: MondayColumnValue[] }): NormalizedClient => {
 	// Use the column values directly if they're already in the right format (from fetchItem).
 	// Otherwise, parse them from the event.
 	const columnValues: MondayColumnValue[] = input.columnValues ?? parseColumnValues(input.event?.columnValues);
@@ -85,4 +81,3 @@ export const ensureClientItem = async (payload: MondayWebhookPayload) => {
 		event: { ...payload.event, pulseName: item.name, groupId: item.group?.id },
 	};
 };
-

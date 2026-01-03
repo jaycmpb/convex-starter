@@ -6,7 +6,6 @@ import type { MondayHandler, MondayHandlerResult } from "@convex/src/webhooks/mo
 /** The group ID for "All Clients" - only process events from this group. */
 const CLIENTS_GROUP_ID = "group_title";
 
-
 /**
  * Upsert client and sync contact access.
  */
@@ -121,4 +120,3 @@ export const clientHandlers: Record<string, MondayHandler> = {
 	create_pulse: handleCreatePulse,
 	move_pulse_into_group: handleMovePulseIntoGroup,
 };
-

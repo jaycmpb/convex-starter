@@ -51,7 +51,6 @@ const syncTask = async (ctx: ActionCtx, task: NormalizedTask): Promise<MondayHan
 	}
 };
 
-
 /**
  * Handle Monday.com column updates for sub-items (tasks).
  * Only processes events from valid work item boards.
@@ -77,7 +76,6 @@ export const handleUpdateColumnValue: MondayHandler = async (ctx, payload) => {
 	return syncTask(ctx, normalized);
 };
 
-
 /**
  * Handle Monday.com sub-item creation (create_subitem_pulse) for tasks.
  * Only processes sub-items created on valid work item boards.
@@ -101,7 +99,6 @@ export const handleCreateSubitemPulse: MondayHandler = async (ctx, payload) => {
 
 	return syncTask(ctx, normalized);
 };
-
 
 /**
  * Handle Monday.com sub-item name changes.
@@ -131,7 +128,6 @@ export const handleChangeSubitemName: MondayHandler = async (ctx, payload) => {
 	return syncTask(ctx, normalized);
 };
 
-
 /**
  * All task event handlers mapped by Monday.com event type.
  */
@@ -140,4 +136,3 @@ export const taskHandlers: Record<string, MondayHandler> = {
 	create_subitem_pulse: handleCreateSubitemPulse,
 	update_name: handleChangeSubitemName,
 };
-

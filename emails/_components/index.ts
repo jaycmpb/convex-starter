@@ -5,4 +5,3 @@ export { Footer } from "@emails/_components/footer";
 export type { FooterProps } from "@emails/_components/footer";
 export { Header } from "@emails/_components/header";
 export { InfoTable } from "@emails/_components/info-table";
-

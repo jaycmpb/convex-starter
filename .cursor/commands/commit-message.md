@@ -9,6 +9,7 @@
 ```
 
 The type must be one of the following:
+
 - feat: A new feature (e.g. add a new component, add a new page, add a new functionality).
 - fix: A bug fix (e.g. fix a bug, fix a typo, fix a bug in the code).
 - refactor: A code refactoring (e.g. refactor the code, refactor the style, refactor the structure).
@@ -21,11 +22,12 @@ The type must be one of the following:
 - chore: A chore (e.g. build, CI, etc.).
 
 [**APA Standards**]:
+
 - Not all words should be capitalized, only the first word and proper nouns.
 - Words like "and", "then", "from" should not be capitalized.
 
-[**Example Message**]:
-```
+[**Example Message**]: ```
+
 feat: Initialize TanStack Start Application with Convex and WorkOS integration
 
 - Set up TanStack Start project with React 19 and TanStack Router for file-based routing.
@@ -37,4 +39,7 @@ feat: Initialize TanStack Start Application with Convex and WorkOS integration
 - Set up Tailwind CSS v4 for styling.
 - Add project documentation and Cursor rules for development workflow.
 - Configure Vite build system with React plugin and TypeScript path aliases.
+
+```
+
 ```

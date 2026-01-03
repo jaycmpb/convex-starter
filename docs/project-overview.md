@@ -9,10 +9,10 @@ This is a client-facing dashboard application for an accounting firm that enable
 ### Primary Goals
 
 1. **Client Self-Service Portal**: Provide clients with a secure, user-friendly interface to:
-   - View their accounts and service engagements
-   - Track task progress and status
-   - View and upload required documents
-   - Monitor engagement progress and completion status
+    - View their accounts and service engagements
+    - Track task progress and status
+    - View and upload required documents
+    - Monitor engagement progress and completion status
 
 2. **Seamless Integration**: Integrate with the firm's existing project management tools (Airtable, Monday.com, or ClickUp) via webhooks to automatically sync data without manual entry.
 
@@ -66,18 +66,18 @@ Firm (Single Instance)
 - **Accounts**: Represent client entities (e.g., "John Smith Personal", "ABC Consulting LLC"). A single person can have multiple accounts (personal tax, business tax, bookkeeping, advisory, etc.).
 
 - **Work Items**: Service engagements being delivered (e.g., "2024 Tax Return", "Monthly Bookkeeping"). Each work item has:
-  - A type (configurable by the firm, e.g., "Tax Return")
-  - A status that maps to progress percentage
-  - An assigned staff member
-  - Tasks and documents
+    - A type (configurable by the firm, e.g., "Tax Return")
+    - A status that maps to progress percentage
+    - An assigned staff member
+    - Tasks and documents
 
 - **Tasks**: Action items within a work item (e.g., "Upload W-2", "Review draft return"). Tasks have statuses: PENDING → IN_PROGRESS → COMPLETE.
 
 - **Documents**: Files that can be attached at multiple levels:
-  - Account level (general documents for that entity)
-  - Work item level (documents for that specific service)
-  - Task level (the specific file requested by that task)
-  - Organized in folders for better structure
+    - Account level (general documents for that entity)
+    - Work item level (documents for that specific service)
+    - Task level (the specific file requested by that task)
+    - Organized in folders for better structure
 
 ## Key Features
 
@@ -130,9 +130,9 @@ Firm (Single Instance)
 ## Access Control
 
 - **Account Access**: Users are granted access to specific accounts with permission levels:
-  - `owner`: Full control
-  - `editor`: Can edit content
-  - `viewer`: Read-only access
+    - `owner`: Full control
+    - `editor`: Can edit content
+    - `viewer`: Read-only access
 
 - **Role-Based**: Users have roles (configurable per firm) and can be marked as staff or client
 - **Multi-User Accounts**: Business accounts can have multiple users with access (e.g., business partners)
@@ -152,4 +152,3 @@ Firm (Single Instance)
 - Integration with external tools to send documents back to source system
 - Enhanced folder templates per engagement type
 - Advanced reporting and analytics
-

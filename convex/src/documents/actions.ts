@@ -6,9 +6,9 @@ import { v } from "convex/values";
  * @returns The upload URL and storage ID.
  */
 export const generateUploadUrl = action({
-  handler: async (ctx) => {
-    return await ctx.storage.generateUploadUrl();
-  },
+	handler: async (ctx) => {
+		return await ctx.storage.generateUploadUrl();
+	},
 });
 
 /**
@@ -17,12 +17,12 @@ export const generateUploadUrl = action({
  * @returns The download URL or null if not found.
  */
 export const getDownloadUrl = action({
-  args: {
-    storageId: v.id("_storage"),
-  },
-  handler: async (ctx, args) => {
-    return await ctx.storage.getUrl(args.storageId);
-  },
+	args: {
+		storageId: v.id("_storage"),
+	},
+	handler: async (ctx, args) => {
+		return await ctx.storage.getUrl(args.storageId);
+	},
 });
 
 /**
@@ -30,11 +30,10 @@ export const getDownloadUrl = action({
  * @param storageId - The Convex storage file ID.
  */
 export const deleteStorageFile = action({
-  args: {
-    storageId: v.id("_storage"),
-  },
-  handler: async (ctx, args) => {
-    await ctx.storage.delete(args.storageId);
-  },
+	args: {
+		storageId: v.id("_storage"),
+	},
+	handler: async (ctx, args) => {
+		await ctx.storage.delete(args.storageId);
+	},
 });
-

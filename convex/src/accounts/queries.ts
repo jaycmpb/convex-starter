@@ -6,12 +6,12 @@ import { v } from "convex/values";
  * @returns Array of all active accounts.
  */
 export const getAllAccounts = query({
-  handler: async (ctx) => {
-    return await ctx.db
-      .query("accounts")
-      .filter((q) => q.eq(q.field("deletedAt"), undefined))
-      .collect();
-  },
+	handler: async (ctx) => {
+		return await ctx.db
+			.query("accounts")
+			.filter((q) => q.eq(q.field("deletedAt"), undefined))
+			.collect();
+	},
 });
 
 /**
@@ -20,16 +20,16 @@ export const getAllAccounts = query({
  * @returns The account document or null if not found.
  */
 export const getAccountById = query({
-  args: {
-    id: v.id("accounts"),
-  },
-  handler: async (ctx, args) => {
-    const account = await ctx.db.get(args.id);
-    if (!account || account.deletedAt) {
-      return null;
-    }
-    return account;
-  },
+	args: {
+		id: v.id("accounts"),
+	},
+	handler: async (ctx, args) => {
+		const account = await ctx.db.get(args.id);
+		if (!account || account.deletedAt) {
+			return null;
+		}
+		return account;
+	},
 });
 
 /**
@@ -38,21 +38,21 @@ export const getAccountById = query({
  * @returns The account document or null if not found.
  */
 export const getAccountByExternalId = query({
-  args: {
-    externalId: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const account = await ctx.db
-      .query("accounts")
-      .withIndex("by_externalId", (q) => q.eq("externalId", args.externalId))
-      .first();
+	args: {
+		externalId: v.string(),
+	},
+	handler: async (ctx, args) => {
+		const account = await ctx.db
+			.query("accounts")
+			.withIndex("by_externalId", (q) => q.eq("externalId", args.externalId))
+			.first();
 
-    if (!account || account.deletedAt) {
-      return null;
-    }
+		if (!account || account.deletedAt) {
+			return null;
+		}
 
-    return account;
-  },
+		return account;
+	},
 });
 
 /**
@@ -61,16 +61,16 @@ export const getAccountByExternalId = query({
  * @returns Array of accounts of the specified type.
  */
 export const getAccountsByType = query({
-  args: {
-    type: v.union(v.literal("personal"), v.literal("business")),
-  },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("accounts")
-      .withIndex("by_type", (q) => q.eq("type", args.type))
-      .filter((q) => q.eq(q.field("deletedAt"), undefined))
-      .collect();
-  },
+	args: {
+		type: v.union(v.literal("personal"), v.literal("business")),
+	},
+	handler: async (ctx, args) => {
+		return await ctx.db
+			.query("accounts")
+			.withIndex("by_type", (q) => q.eq("type", args.type))
+			.filter((q) => q.eq(q.field("deletedAt"), undefined))
+			.collect();
+	},
 });
 
 /**
@@ -79,25 +79,20 @@ export const getAccountsByType = query({
  * @returns Array of accounts the user can access.
  */
 export const getAccountsByUserId = query({
-  args: {
-    userId: v.id("users"),
-  },
-  handler: async (ctx, args) => {
-    const accessRecords = await ctx.db
-      .query("accountAccess")
-      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
-      .collect();
+	args: {
+		userId: v.id("users"),
+	},
+	handler: async (ctx, args) => {
+		const accessRecords = await ctx.db
+			.query("accountAccess")
+			.withIndex("by_userId", (q) => q.eq("userId", args.userId))
+			.collect();
 
-    const accountIds = accessRecords.map((access) => access.accountId);
-    const accounts = await Promise.all(
-      accountIds.map((id) => ctx.db.get(id))
-    );
+		const accountIds = accessRecords.map((access) => access.accountId);
+		const accounts = await Promise.all(accountIds.map((id) => ctx.db.get(id)));
 
-    return accounts.filter(
-      (account): account is NonNullable<typeof account> =>
-        account !== null && account.deletedAt === undefined
-    );
-  },
+		return accounts.filter((account): account is NonNullable<typeof account> => account !== null && account.deletedAt === undefined);
+	},
 });
 
 /**
@@ -106,15 +101,15 @@ export const getAccountsByUserId = query({
  * @returns Array of access records for the account.
  */
 export const getAccountAccessByAccountId = query({
-  args: {
-    accountId: v.id("accounts"),
-  },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("accountAccess")
-      .withIndex("by_accountId", (q) => q.eq("accountId", args.accountId))
-      .collect();
-  },
+	args: {
+		accountId: v.id("accounts"),
+	},
+	handler: async (ctx, args) => {
+		return await ctx.db
+			.query("accountAccess")
+			.withIndex("by_accountId", (q) => q.eq("accountId", args.accountId))
+			.collect();
+	},
 });
 
 /**
@@ -123,15 +118,15 @@ export const getAccountAccessByAccountId = query({
  * @returns Array of access records for the user.
  */
 export const getAccountAccessByUserId = query({
-  args: {
-    userId: v.id("users"),
-  },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("accountAccess")
-      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
-      .collect();
-  },
+	args: {
+		userId: v.id("users"),
+	},
+	handler: async (ctx, args) => {
+		return await ctx.db
+			.query("accountAccess")
+			.withIndex("by_userId", (q) => q.eq("userId", args.userId))
+			.collect();
+	},
 });
 
 /**
@@ -141,17 +136,14 @@ export const getAccountAccessByUserId = query({
  * @returns The access record or null if not found.
  */
 export const getAccountAccess = query({
-  args: {
-    accountId: v.id("accounts"),
-    userId: v.id("users"),
-  },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("accountAccess")
-      .withIndex("by_accountId_userId", (q) =>
-        q.eq("accountId", args.accountId).eq("userId", args.userId)
-      )
-      .first();
-  },
+	args: {
+		accountId: v.id("accounts"),
+		userId: v.id("users"),
+	},
+	handler: async (ctx, args) => {
+		return await ctx.db
+			.query("accountAccess")
+			.withIndex("by_accountId_userId", (q) => q.eq("accountId", args.accountId).eq("userId", args.userId))
+			.first();
+	},
 });
-

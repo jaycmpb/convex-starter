@@ -7,16 +7,16 @@ import { v } from "convex/values";
  * @returns Array of tasks for the work item.
  */
 export const getTasksByWorkItemId = query({
-  args: {
-    workItemId: v.id("workItems"),
-  },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("tasks")
-      .withIndex("by_workItemId", (q) => q.eq("workItemId", args.workItemId))
-      .filter((q) => q.eq(q.field("deletedAt"), undefined))
-      .collect();
-  },
+	args: {
+		workItemId: v.id("workItems"),
+	},
+	handler: async (ctx, args) => {
+		return await ctx.db
+			.query("tasks")
+			.withIndex("by_workItemId", (q) => q.eq("workItemId", args.workItemId))
+			.filter((q) => q.eq(q.field("deletedAt"), undefined))
+			.collect();
+	},
 });
 
 /**
@@ -26,19 +26,17 @@ export const getTasksByWorkItemId = query({
  * @returns Array of tasks matching the status.
  */
 export const getTasksByWorkItemIdAndStatus = query({
-  args: {
-    workItemId: v.id("workItems"),
-    status: v.string(),
-  },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("tasks")
-      .withIndex("by_workItemId_status", (q) =>
-        q.eq("workItemId", args.workItemId).eq("status", args.status)
-      )
-      .filter((q) => q.eq(q.field("deletedAt"), undefined))
-      .collect();
-  },
+	args: {
+		workItemId: v.id("workItems"),
+		status: v.string(),
+	},
+	handler: async (ctx, args) => {
+		return await ctx.db
+			.query("tasks")
+			.withIndex("by_workItemId_status", (q) => q.eq("workItemId", args.workItemId).eq("status", args.status))
+			.filter((q) => q.eq(q.field("deletedAt"), undefined))
+			.collect();
+	},
 });
 
 /**
@@ -47,16 +45,16 @@ export const getTasksByWorkItemIdAndStatus = query({
  * @returns The task document or null if not found.
  */
 export const getTaskById = query({
-  args: {
-    id: v.id("tasks"),
-  },
-  handler: async (ctx, args) => {
-    const task = await ctx.db.get(args.id);
-    if (!task || task.deletedAt) {
-      return null;
-    }
-    return task;
-  },
+	args: {
+		id: v.id("tasks"),
+	},
+	handler: async (ctx, args) => {
+		const task = await ctx.db.get(args.id);
+		if (!task || task.deletedAt) {
+			return null;
+		}
+		return task;
+	},
 });
 
 /**
@@ -65,20 +63,19 @@ export const getTaskById = query({
  * @returns The task document or null if not found.
  */
 export const getTaskByExternalId = query({
-  args: {
-    externalId: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const task = await ctx.db
-      .query("tasks")
-      .withIndex("by_externalId", (q) => q.eq("externalId", args.externalId))
-      .first();
+	args: {
+		externalId: v.string(),
+	},
+	handler: async (ctx, args) => {
+		const task = await ctx.db
+			.query("tasks")
+			.withIndex("by_externalId", (q) => q.eq("externalId", args.externalId))
+			.first();
 
-    if (!task || task.deletedAt) {
-      return null;
-    }
+		if (!task || task.deletedAt) {
+			return null;
+		}
 
-    return task;
-  },
+		return task;
+	},
 });
-

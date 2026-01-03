@@ -18,9 +18,7 @@ export function WelcomeEmail({ firstName, dashboardUrl = "#" }: WelcomeEmailProp
 				<Heading as="h2" className="text-black text-xl font-semibold m-0 mb-2">
 					Welcome, {firstName}!
 				</Heading>
-				<Text className="text-gray-700 text-base m-0 mb-6 leading-relaxed">
-					We're excited to work with you for your tax and accounting needs.
-				</Text>
+				<Text className="text-gray-700 text-base m-0 mb-6 leading-relaxed">We're excited to work with you for your tax and accounting needs.</Text>
 
 				<Text className="text-gray-700 text-base m-0 mb-6 leading-relaxed">
 					You're now able to sign into your account to access your financial information, documents, and more.
@@ -31,7 +29,8 @@ export function WelcomeEmail({ firstName, dashboardUrl = "#" }: WelcomeEmailProp
 				</Section>
 
 				<Text className="text-gray-700 text-base m-0 mb-4 leading-relaxed">
-					You'll receive important updates and notifications from us at this email address. If you have any questions or need assistance, please don't hesitate to reach out.
+					You'll receive important updates and notifications from us at this email address. If you have any questions or need assistance, please don't hesitate to reach
+					out.
 				</Text>
 
 				<Text className="text-gray-600 text-sm m-0">We look forward to working with you!</Text>
@@ -46,4 +45,3 @@ WelcomeEmail.PreviewProps = {
 } satisfies WelcomeEmailProps;
 
 export default WelcomeEmail;
-

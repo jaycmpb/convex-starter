@@ -6,7 +6,6 @@ import type { MondayHandler, MondayHandlerResult } from "@convex/src/webhooks/mo
 /** The group ID for "All Contacts" - only process events from this group. */
 const CONTACTS_GROUP_ID = "group_mkz6hksg";
 
-
 /**
  * Execute the createFromMonday action with error handling.
  */

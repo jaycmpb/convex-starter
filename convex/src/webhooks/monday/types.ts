@@ -12,4 +12,3 @@ export type MondayHandlerResult = {
 };
 
 export type MondayHandler = (ctx: ActionCtx, payload: MondayWebhookPayload) => Promise<MondayHandlerResult>;
-

@@ -1,11 +1,5 @@
 import { fetchSubItem, type MondaySubItemWithParent } from "@convex/src/webhooks/monday/client";
-import {
-	extractValue,
-	type MondayColumnValue,
-	parseColumnValues,
-	TASK_COLUMNS,
-	WORK_ITEM_BOARDS,
-} from "@convex/src/webhooks/monday/helpers";
+import { extractValue, type MondayColumnValue, parseColumnValues, TASK_COLUMNS, WORK_ITEM_BOARDS } from "@convex/src/webhooks/monday/helpers";
 import type { MondayWebhookPayload } from "@convex/src/webhooks/monday/types";
 
 export type NormalizedTask = {
@@ -22,14 +16,12 @@ export type NormalizedTask = {
  */
 const VALID_BOARD_IDS = Object.keys(WORK_ITEM_BOARDS);
 
-
 /**
  * Check if the event is from a valid work item board (sub-items inherit parent board).
  */
 export const isValidTaskBoard = (boardId: string | undefined): boolean => {
 	return !!boardId && VALID_BOARD_IDS.includes(boardId);
 };
-
 
 /**
  * Parse a Monday.com date column value to a Unix timestamp.
@@ -62,14 +54,10 @@ const parseDateToTimestamp = (values: MondayColumnValue[], columnId: string): nu
 	return undefined;
 };
 
-
 /**
  * Normalize task data from a Monday.com sub-item.
  */
-export const normalizeTask = (input: {
-	subitem: MondaySubItemWithParent;
-	columnValues?: MondayColumnValue[];
-}): NormalizedTask => {
+export const normalizeTask = (input: { subitem: MondaySubItemWithParent; columnValues?: MondayColumnValue[] }): NormalizedTask => {
 	const columnValues: MondayColumnValue[] = input.columnValues ?? input.subitem.column_values ?? [];
 
 	const name = input.subitem.name;
@@ -82,11 +70,12 @@ export const normalizeTask = (input: {
 	return { name, externalId, workItemExternalId, status, description, dueAt };
 };
 
-
 /**
  * Fetch and enrich a Monday.com sub-item (task) by pulse ID.
  */
-export const ensureTask = async (payload: MondayWebhookPayload): Promise<{
+export const ensureTask = async (
+	payload: MondayWebhookPayload,
+): Promise<{
 	subitem: MondaySubItemWithParent;
 	columnValues: MondayColumnValue[];
 	boardId: string;
@@ -118,4 +107,3 @@ export const ensureTask = async (payload: MondayWebhookPayload): Promise<{
 		boardId: subitem.parent_item.board.id,
 	};
 };
-
