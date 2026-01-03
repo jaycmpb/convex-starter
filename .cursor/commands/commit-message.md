@@ -23,8 +23,9 @@ The type must be one of the following:
 
 [**APA Standards**]:
 
-- Not all words should be capitalized, only the first word and proper nouns.
-- Words like "and", "then", "from" should not be capitalized.
+- Capitalize the first word and all major words (nouns, verbs, adjectives, adverbs, pronouns).
+- Do NOT capitalize minor words: and, but, for, or, nor, a, an, the, as, at, by, in, of, on, per, to, with, from, then.
+- For hyphenated compounds, capitalize both parts if they are major words (e.g., "In-App").
 
 [**Example Message**]: ```
 
