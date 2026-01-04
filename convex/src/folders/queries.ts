@@ -103,9 +103,32 @@ export const getFolderContents = query({
 						.take(limit),
 		]);
 
+		// Fetch task data for documents that have a taskId.
+		const documentsWithTasks = await Promise.all(
+			documents.map(async (doc) => {
+				if (!doc.taskId) {
+					return { ...doc, task: null };
+				}
+
+				const task = await ctx.db.get(doc.taskId);
+				if (!task || task.deletedAt) {
+					return { ...doc, task: null };
+				}
+
+				return {
+					...doc,
+					task: {
+						_id: task._id,
+						name: task.name,
+						status: task.status,
+					},
+				};
+			}),
+		);
+
 		return {
 			subfolders,
-			documents,
+			documents: documentsWithTasks,
 			hasMoreFolders: subfolders.length >= limit,
 			hasMoreDocuments: documents.length >= limit,
 		};

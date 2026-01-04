@@ -6,6 +6,19 @@ export const CONTACT_COLUMNS = {
 	firstName: "text_mkz5zcdf",
 	lastName: "text_mkz5ehks",
 	phone: "phone_mkz5semw",
+	status: "status",
+};
+
+/**
+ * Column IDs for Monday.com Team board.
+ */
+export const TEAM_COLUMNS = {
+	email: "email_mkz9x3wa",
+	firstName: "text_mkz9jhe5",
+	lastName: "text_mkz984kv",
+	role: "dropdown_mkz9bhwb",
+	phone: "phone_mkz9gr1p",
+	status: "status",
 };
 
 /**
@@ -33,12 +46,17 @@ export const WORK_ITEM_COLUMNS = {
 
 /**
  * Column IDs for Monday.com Task sub-items.
+ * Note: Team Assignee has different column IDs per board:
+ * - Personal Tax Returns: board_relation_mkz9h3m7
+ * - Business Tax Returns: board_relation_mkz93e04
  */
 export const TASK_COLUMNS = {
 	details: "text_mkz688n2",
 	status: "status",
 	assignee: "board_relation_mkz6wt8w",
+	teamAssignee: ["board_relation_mkz9h3m7", "board_relation_mkz93e04"],
 	dueDate: "date0",
+	type: "dropdown_mkz69n1v",
 };
 
 /**
@@ -95,10 +113,54 @@ export const extractValue = (values: MondayColumnValue[], columnId: string): str
 			const parsed = JSON.parse(entry.value);
 			if (parsed?.email) return parsed.email as string;
 			if (parsed?.phone) return parsed.phone as string;
+			if (parsed?.label) return parsed.label as string;
 		} catch {
 			// Fall through to return raw string.
 			return entry.value as string;
 		}
+	}
+
+	return undefined;
+};
+
+/**
+ * Extract status value from Monday column values and convert to boolean.
+ * Returns true for "Active", false for "Inactive", undefined if not set.
+ */
+export const extractStatus = (values: MondayColumnValue[], columnId: string): boolean | undefined => {
+	const statusText = extractValue(values, columnId);
+	if (!statusText) return undefined;
+	return statusText.toLowerCase().trim() === "active";
+};
+
+/**
+ * Extract the first person's ID or email from a Monday.com people column.
+ * People columns return an array of person objects with IDs or emails.
+ * @param values - The column values array.
+ * @param columnId - The people column ID.
+ * @returns The first person's ID (as string) or email, or undefined if not found.
+ */
+export const extractPeopleValue = (values: MondayColumnValue[], columnId: string): string | undefined => {
+	const entry = values.find((v) => v.id === columnId);
+	if (!entry) return undefined;
+
+	// Try parsing the value JSON (people columns return array of person objects).
+	if (entry.value) {
+		try {
+			const parsed = JSON.parse(entry.value);
+			if (Array.isArray(parsed) && parsed.length > 0) {
+				// Monday.com people columns can have person objects with id, email, or both.
+				const firstPerson = parsed[0];
+				return firstPerson?.id ? String(firstPerson.id) : firstPerson?.email;
+			}
+		} catch {
+			// Fall through to try text value.
+		}
+	}
+
+	// Fallback to text value (might be email or ID as string).
+	if (entry.text) {
+		return entry.text;
 	}
 
 	return undefined;

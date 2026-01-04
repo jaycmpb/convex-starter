@@ -29,6 +29,9 @@ export const createFromMonday = internalAction({
 		firstName: v.optional(v.string()),
 		lastName: v.optional(v.string()),
 		phone: v.optional(v.string()),
+		role: v.optional(v.union(v.literal("owner"), v.literal("admin"), v.literal("member"))),
+		isStaff: v.optional(v.boolean()),
+		isActive: v.optional(v.boolean()),
 	},
 	handler: async (ctx, args) => {
 		const parsedName = splitName(args.name);
@@ -67,15 +70,28 @@ export const createFromMonday = internalAction({
 			firstName,
 			lastName,
 			phone: args.phone,
+			role: args.role,
+			isStaff: args.isStaff,
+			isActive: args.isActive,
 		});
 
-		// Send welcome email to new users.
+		// Send appropriate email to new users.
 		if (isNewUser) {
-			await ctx.runAction(internal.src.resend.actions.sendWelcomeEmail, {
-				userId,
-				email: args.email,
-				firstName,
-			});
+			if (args.isStaff) {
+				// Team members get "account created" email.
+				await ctx.runAction(internal.src.resend.actions.sendAccountCreatedEmail, {
+					userId,
+					email: args.email,
+					firstName,
+				});
+			} else {
+				// Contacts get welcome email.
+				await ctx.runAction(internal.src.resend.actions.sendWelcomeEmail, {
+					userId,
+					email: args.email,
+					firstName,
+				});
+			}
 		}
 	},
 });

@@ -19,6 +19,16 @@ app.post("/send-otp", async (c) => {
 		return c.json({ success: false, error: "Email is required." }, 400);
 	}
 
+	// Check if user exists and is inactive.
+	try {
+		const user = await c.env.runQuery(api.src.users.queries.getUserByEmail, { email });
+		if (user && user.isActive === false) {
+			return c.json({ success: false, error: "Your account is inactive." }, 403);
+		}
+	} catch {
+		// Query may fail - continue to attempt OTP send for new users.
+	}
+
 	try {
 		const result = await c.env.runAction(api.auth.signIn, {
 			provider: "resend-otp",

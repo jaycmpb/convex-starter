@@ -16,7 +16,7 @@ import { v } from "convex/values";
 export const createUser = mutation({
 	args: {
 		email: v.string(),
-		role: v.string(),
+		role: v.optional(v.union(v.literal("owner"), v.literal("admin"), v.literal("member"))),
 		isStaff: v.boolean(),
 		externalId: v.optional(v.string()),
 		firstName: v.optional(v.string()),
@@ -78,7 +78,7 @@ export const updateUser = mutation({
 	args: {
 		id: v.id("users"),
 		email: v.optional(v.string()),
-		role: v.optional(v.string()),
+		role: v.optional(v.union(v.literal("owner"), v.literal("admin"), v.literal("member"))),
 		isStaff: v.optional(v.boolean()),
 		firstName: v.optional(v.string()),
 		lastName: v.optional(v.string()),
@@ -112,7 +112,7 @@ export const updateUser = mutation({
 
 		const updates: {
 			email?: string;
-			role?: string;
+			role?: "owner" | "admin" | "member";
 			isStaff?: boolean;
 			firstName?: string;
 			lastName?: string;
@@ -157,7 +157,7 @@ export const updateUser = mutation({
 export const upsertUserByExternalId = mutation({
 	args: {
 		email: v.string(),
-		role: v.string(),
+		role: v.optional(v.union(v.literal("owner"), v.literal("admin"), v.literal("member"))),
 		isStaff: v.boolean(),
 		externalId: v.string(),
 		firstName: v.optional(v.string()),
@@ -202,6 +202,9 @@ export const ensureUserFromMonday = internalMutation({
 		firstName: v.optional(v.string()),
 		lastName: v.optional(v.string()),
 		phone: v.optional(v.string()),
+		role: v.optional(v.union(v.literal("owner"), v.literal("admin"), v.literal("member"))),
+		isStaff: v.optional(v.boolean()),
+		isActive: v.optional(v.boolean()),
 	},
 	handler: async (ctx, args) => {
 		console.log(`[ensureUserFromMonday] Called with email=${args.email}, externalId=${args.externalId}`);
@@ -215,12 +218,34 @@ export const ensureUserFromMonday = internalMutation({
 
 			if (existingByExternalId) {
 				console.log(`[ensureUserFromMonday] Found existing user by externalId: ${existingByExternalId._id}`);
-				await ctx.db.patch(existingByExternalId._id, {
+				const updates: {
+					email: string;
+					firstName?: string;
+					lastName?: string;
+					phone?: string;
+					role?: "owner" | "admin" | "member";
+					isStaff?: boolean;
+					isActive?: boolean;
+				} = {
 					email: args.email,
 					firstName: args.firstName ?? existingByExternalId.firstName,
 					lastName: args.lastName ?? existingByExternalId.lastName,
 					phone: args.phone ?? existingByExternalId.phone,
-				});
+				};
+
+				if (args.role !== undefined) {
+					updates.role = args.role;
+				}
+
+				if (args.isStaff !== undefined) {
+					updates.isStaff = args.isStaff;
+				}
+
+				if (args.isActive !== undefined) {
+					updates.isActive = args.isActive;
+				}
+
+				await ctx.db.patch(existingByExternalId._id, updates);
 				return existingByExternalId._id;
 			}
 		}
@@ -233,12 +258,34 @@ export const ensureUserFromMonday = internalMutation({
 
 		if (existingByEmail) {
 			console.log(`[ensureUserFromMonday] Found existing user by email: ${existingByEmail._id}`);
-			await ctx.db.patch(existingByEmail._id, {
+			const updates: {
+				externalId?: string;
+				firstName?: string;
+				lastName?: string;
+				phone?: string;
+				role?: "owner" | "admin" | "member";
+				isStaff?: boolean;
+				isActive?: boolean;
+			} = {
 				externalId: args.externalId ?? existingByEmail.externalId,
 				firstName: args.firstName ?? existingByEmail.firstName,
 				lastName: args.lastName ?? existingByEmail.lastName,
 				phone: args.phone ?? existingByEmail.phone,
-			});
+			};
+
+			if (args.role !== undefined) {
+				updates.role = args.role;
+			}
+
+			if (args.isStaff !== undefined) {
+				updates.isStaff = args.isStaff;
+			}
+
+			if (args.isActive !== undefined) {
+				updates.isActive = args.isActive;
+			}
+
+			await ctx.db.patch(existingByEmail._id, updates);
 			return existingByEmail._id;
 		}
 
@@ -246,8 +293,9 @@ export const ensureUserFromMonday = internalMutation({
 		console.log(`[ensureUserFromMonday] Creating new user for email=${args.email}`);
 		const userId = await ctx.db.insert("users", {
 			email: args.email,
-			role: "contact",
-			isStaff: false,
+			role: args.role,
+			isStaff: args.isStaff ?? false,
+			isActive: args.isActive ?? true,
 			externalId: args.externalId,
 			firstName: args.firstName,
 			lastName: args.lastName,

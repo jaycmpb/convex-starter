@@ -32,10 +32,10 @@ export const getOverview = query({
 
 		const tasks = allTasks.flat();
 
-		// Count pending tasks (assuming status !== "done" or "completed" means pending).
+		// Count pending tasks (assuming status !== "done", "completed", "complete", or "closed" means pending).
 		const pendingTasks = tasks.filter((task) => {
 			const status = task.status.toLowerCase();
-			return status !== "done" && status !== "completed" && status !== "closed";
+			return status !== "done" && status !== "completed" && status !== "complete" && status !== "closed";
 		});
 
 		// Get recent work items (last 5).

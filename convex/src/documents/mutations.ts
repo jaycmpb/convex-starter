@@ -1,3 +1,4 @@
+import { getAuthUserId } from "@convex-dev/auth/server";
 import { mutation } from "@convex/_generated/server";
 import type { Id } from "@convex/_generated/dataModel";
 import { ErrorCodes } from "@convex/src/_shared/errorCodes";
@@ -35,6 +36,15 @@ export const createDocument = mutation({
 				JSON.stringify({
 					...ErrorCodes.NOT_FOUND,
 					message: "User not found.",
+				}),
+			);
+		}
+
+		if (user.isStaff) {
+			throw new Error(
+				JSON.stringify({
+					...ErrorCodes.FORBIDDEN,
+					message: "Staff members cannot upload documents.",
 				}),
 			);
 		}
@@ -117,6 +127,26 @@ export const renameDocument = mutation({
 		name: v.string(),
 	},
 	handler: async (ctx, args) => {
+		const userId = await getAuthUserId(ctx);
+		if (!userId) {
+			throw new Error(
+				JSON.stringify({
+					...ErrorCodes.NOT_AUTHENTICATED,
+					message: "You must be authenticated to rename documents.",
+				}),
+			);
+		}
+
+		const user = await ctx.db.get(userId);
+		if (user?.isStaff) {
+			throw new Error(
+				JSON.stringify({
+					...ErrorCodes.FORBIDDEN,
+					message: "Staff members cannot rename documents.",
+				}),
+			);
+		}
+
 		const document = await ctx.db.get(args.id);
 		if (!document || document.deletedAt) {
 			throw new Error(
@@ -144,6 +174,26 @@ export const moveDocument = mutation({
 		folderId: v.optional(v.id("folders")),
 	},
 	handler: async (ctx, args) => {
+		const userId = await getAuthUserId(ctx);
+		if (!userId) {
+			throw new Error(
+				JSON.stringify({
+					...ErrorCodes.NOT_AUTHENTICATED,
+					message: "You must be authenticated to move documents.",
+				}),
+			);
+		}
+
+		const user = await ctx.db.get(userId);
+		if (user?.isStaff) {
+			throw new Error(
+				JSON.stringify({
+					...ErrorCodes.FORBIDDEN,
+					message: "Staff members cannot move documents.",
+				}),
+			);
+		}
+
 		const document = await ctx.db.get(args.id);
 		if (!document || document.deletedAt) {
 			throw new Error(
@@ -197,6 +247,26 @@ export const replaceDocumentFile = mutation({
 		size: v.optional(v.number()),
 	},
 	handler: async (ctx, args) => {
+		const userId = await getAuthUserId(ctx);
+		if (!userId) {
+			throw new Error(
+				JSON.stringify({
+					...ErrorCodes.NOT_AUTHENTICATED,
+					message: "You must be authenticated to replace documents.",
+				}),
+			);
+		}
+
+		const user = await ctx.db.get(userId);
+		if (user?.isStaff) {
+			throw new Error(
+				JSON.stringify({
+					...ErrorCodes.FORBIDDEN,
+					message: "Staff members cannot replace documents.",
+				}),
+			);
+		}
+
 		const document = await ctx.db.get(args.id);
 		if (!document || document.deletedAt) {
 			throw new Error(
@@ -230,6 +300,7 @@ export const replaceDocumentFile = mutation({
 
 /**
  * Soft delete a document.
+ * Prevents deletion if the document is associated with a completed task.
  * @param id - The document ID.
  * @returns The ID of the deleted document.
  */
@@ -238,6 +309,26 @@ export const deleteDocument = mutation({
 		id: v.id("documents"),
 	},
 	handler: async (ctx, args) => {
+		const userId = await getAuthUserId(ctx);
+		if (!userId) {
+			throw new Error(
+				JSON.stringify({
+					...ErrorCodes.NOT_AUTHENTICATED,
+					message: "You must be authenticated to delete documents.",
+				}),
+			);
+		}
+
+		const user = await ctx.db.get(userId);
+		if (user?.isStaff) {
+			throw new Error(
+				JSON.stringify({
+					...ErrorCodes.FORBIDDEN,
+					message: "Staff members cannot delete documents.",
+				}),
+			);
+		}
+
 		const document = await ctx.db.get(args.id);
 		if (!document || document.deletedAt) {
 			throw new Error(
@@ -246,6 +337,22 @@ export const deleteDocument = mutation({
 					message: "Document not found.",
 				}),
 			);
+		}
+
+		// Check if document is associated with a completed task.
+		if (document.taskId) {
+			const task = await ctx.db.get(document.taskId);
+			if (task && !task.deletedAt) {
+				const completedStatuses = ["done", "completed", "complete", "closed"];
+				if (completedStatuses.includes(task.status.toLowerCase())) {
+					throw new Error(
+						JSON.stringify({
+							...ErrorCodes.BAD_REQUEST,
+							message: "Cannot delete document associated with a completed task.",
+						}),
+					);
+				}
+			}
 		}
 
 		await ctx.db.patch(args.id, { deletedAt: Date.now() });

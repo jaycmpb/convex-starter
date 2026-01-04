@@ -107,7 +107,7 @@ export const sendNotificationEmail = internalAction({
 				}),
 			);
 		} else if (args.type === "task_reminder") {
-			subject = `Reminder: ${taskName} is still incomplete`;
+			subject = `Reminder: ${taskName} Is Still Incomplete`;
 			// Calculate days incomplete based on task creation time.
 			if (args.taskId) {
 				const taskDoc = await ctx.runQuery(api.src.tasks.queries.getTaskById, { id: args.taskId });

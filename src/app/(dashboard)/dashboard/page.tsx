@@ -23,6 +23,8 @@ import {
 	ExternalLink,
 	MessageSquare,
 	Send,
+	FileText,
+	CheckSquare,
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -35,19 +37,29 @@ import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 export default function DashboardPage() {
 	const { selectedAccountId } = useAccount();
 	const userData = useQuery(api.src.users.queries.meWithSelectedAccount);
+	const user = userData?.user;
+	const isStaff = user?.isStaff ?? false;
+
 	const overview = useQuery(
 		api.src.dashboard.queries.getOverview,
-		selectedAccountId ? { accountId: selectedAccountId } : "skip",
+		selectedAccountId && !isStaff ? { accountId: selectedAccountId } : "skip",
 	);
 	const workItems = useQuery(
 		api.src.workItems.queries.getWorkItemsByAccountId,
-		selectedAccountId ? { accountId: selectedAccountId } : "skip",
+		selectedAccountId && !isStaff ? { accountId: selectedAccountId } : "skip",
+	);
+	const recentActivity = useQuery(
+		api.src.staff.queries.getStaffRecentActivity,
+		isStaff ? {} : "skip",
 	);
 
-	const user = userData?.user;
 	const greeting = user?.firstName
 		? `Good ${getTimeOfDay()}, ${user.firstName}`
 		: "Good morning";
+
+	if (isStaff) {
+		return <StaffDashboard greeting={greeting} recentActivity={recentActivity} />;
+	}
 
 	const actionItems = workItems
 		?.filter((item) => {
@@ -151,6 +163,7 @@ export default function DashboardPage() {
 				</CardHeader>
 				<CardContent>
 					<ChartContainer
+						id="cash-flow-chart"
 						config={{
 							income: {
 								label: "Income",
@@ -320,6 +333,103 @@ export default function DashboardPage() {
 					</Card>
 				</div>
 			</div>
+		</div>
+	);
+}
+
+function StaffDashboard({
+	greeting,
+	recentActivity,
+}: {
+	greeting: string;
+	recentActivity: Array<{
+		type: "task_completed" | "document_uploaded" | "message_sent";
+		timestamp: number;
+		workItemId?: string;
+		taskId?: string;
+		documentId?: string;
+		messageId?: string;
+		title: string;
+		description?: string;
+	}> | undefined;
+}) {
+	const getActivityIcon = (type: string) => {
+		switch (type) {
+			case "task_completed":
+				return <CheckSquare className="h-4 w-4" />;
+			case "document_uploaded":
+				return <FileText className="h-4 w-4" />;
+			case "message_sent":
+				return <MessageSquare className="h-4 w-4" />;
+			default:
+				return <Clock className="h-4 w-4" />;
+		}
+	};
+
+	const formatTimestamp = (timestamp: number) => {
+		const date = new Date(timestamp);
+		const now = new Date();
+		const diffMs = now.getTime() - date.getTime();
+		const diffMins = Math.floor(diffMs / 60000);
+		const diffHours = Math.floor(diffMs / 3600000);
+		const diffDays = Math.floor(diffMs / 86400000);
+
+		if (diffMins < 1) return "Just now";
+		if (diffMins < 60) return `${diffMins}m ago`;
+		if (diffHours < 24) return `${diffHours}h ago`;
+		if (diffDays < 7) return `${diffDays}d ago`;
+		return date.toLocaleDateString();
+	};
+
+	return (
+		<div className="space-y-6">
+			<div>
+				<h1 className="text-3xl font-semibold">{greeting}</h1>
+				<p className="text-muted-foreground mt-1">Here&apos;s your recent activity.</p>
+			</div>
+
+			<Card>
+				<CardHeader>
+					<CardTitle>Recent Activity</CardTitle>
+					<CardDescription>Your recent tasks, documents, and messages from the last 30 days.</CardDescription>
+				</CardHeader>
+				<CardContent>
+					{recentActivity === undefined ? (
+						<div className="space-y-4">
+							{Array.from({ length: 5 }).map((_, i) => (
+								<div key={i} className="h-16 animate-pulse rounded-lg bg-muted" />
+							))}
+						</div>
+					) : recentActivity.length === 0 ? (
+						<div className="flex flex-col items-center justify-center py-12">
+							<Clock className="h-12 w-12 text-muted-foreground mb-4" />
+							<p className="text-muted-foreground">No recent activity</p>
+						</div>
+					) : (
+						<div className="space-y-3">
+							{recentActivity.map((activity) => (
+								<div
+									key={`${activity.type}-${activity.timestamp}-${activity.taskId || activity.documentId || activity.messageId}`}
+									className="flex items-start gap-3 rounded-lg border p-4 hover:bg-accent/50 transition-colors"
+								>
+									<div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-full bg-muted">
+										{getActivityIcon(activity.type)}
+									</div>
+									<div className="flex-1">
+										<div className="flex items-center gap-2 mb-1">
+											<h4 className="font-medium text-sm">{activity.title}</h4>
+											<span className="text-xs text-muted-foreground">{formatTimestamp(activity.timestamp)}</span>
+										</div>
+										{activity.description && (
+											<p className="text-sm text-muted-foreground">{activity.description}</p>
+										)}
+									</div>
+								</div>
+							))}
+						</div>
+					)}
+				</CardContent>
+			</Card>
 		</div>
 	);
 }

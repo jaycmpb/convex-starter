@@ -1,5 +1,5 @@
 import { fetchItem } from "@convex/src/webhooks/monday/client";
-import { CONTACT_COLUMNS, extractValue, parseColumnValues } from "@convex/src/webhooks/monday/helpers";
+import { CONTACT_COLUMNS, extractStatus, extractValue, parseColumnValues } from "@convex/src/webhooks/monday/helpers";
 import type { MondayWebhookPayload } from "@convex/src/webhooks/monday/types";
 
 export type NormalizedContact = {
@@ -9,6 +9,7 @@ export type NormalizedContact = {
 	phone?: string;
 	name?: string;
 	externalId?: string;
+	isActive?: boolean;
 };
 
 /**
@@ -23,8 +24,9 @@ export const normalizeContact = (input: { body: Record<string, any>; event: Reco
 	const phone = input.body.phone ?? extractValue(columnValues, CONTACT_COLUMNS.phone);
 	const name = input.body.name ?? input.event?.pulseName ?? [firstName, lastName].filter(Boolean).join(" ").trim();
 	const externalId = input.body.externalId ?? (input.event?.pulseId ? String(input.event.pulseId) : undefined);
+	const isActive = input.body.isActive !== undefined ? input.body.isActive : extractStatus(columnValues, CONTACT_COLUMNS.status);
 
-	return { email, firstName, lastName, phone, name, externalId };
+	return { email, firstName, lastName, phone, name, externalId, isActive };
 };
 
 /**

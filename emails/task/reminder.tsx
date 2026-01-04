@@ -25,7 +25,7 @@ export function TaskReminderEmail({ firstName, taskName, workItemName, dashboard
 	const dueDateText = dueAt ? new Date(dueAt).toLocaleDateString() : null;
 
 	return (
-		<EmailLayout preview={`Reminder: ${taskName} is still incomplete`}>
+		<EmailLayout preview={`Reminder: ${taskName} Is Still Incomplete`}>
 			<Section className="px-10 py-12">
 				<Heading as="h2" className="text-black text-xl font-semibold m-0 mb-2">
 					Task Reminder

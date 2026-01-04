@@ -1,5 +1,6 @@
 import { Email } from "@convex-dev/auth/providers/Email";
 import { internalAction } from "@convex/_generated/server";
+import { AccountCreatedEmail } from "@emails/account-created";
 import { OTPEmail } from "@emails/otp";
 import { WelcomeEmail } from "@emails/welcome";
 import { RandomReader, generateRandomString } from "@oslojs/crypto/random";
@@ -41,7 +42,7 @@ export const ResendOTP = Email({
 });
 
 /**
- * Send a welcome email to a newly created user.
+ * Send a welcome email to a newly created contact.
  * @param userId - The ID of the user (for logging/tracking).
  * @param email - The user's email address.
  * @param firstName - Optional first name for personalization.
@@ -79,5 +80,48 @@ export const sendWelcomeEmail = internalAction({
 		}
 
 		console.log(`Welcome email sent to ${args.email} (user: ${args.userId}).`);
+	},
+});
+
+
+/**
+ * Send an account created email to a newly created team member.
+ * @param userId - The ID of the user (for logging/tracking).
+ * @param email - The user's email address.
+ * @param firstName - Optional first name for personalization.
+ */
+export const sendAccountCreatedEmail = internalAction({
+	args: {
+		userId: v.id("users"),
+		email: v.string(),
+		firstName: v.optional(v.string()),
+	},
+	handler: async (ctx, args) => {
+		const resend = new Resend(process.env.RESEND_API_KEY);
+
+		// Generate the dashboard URL.
+		const dashboardUrl = process.env.SITE_URL ? `${process.env.SITE_URL}/dashboard` : "#";
+
+		// Render the email template.
+		const html = await render(
+			AccountCreatedEmail({
+				firstName: args.firstName || "there",
+				dashboardUrl,
+			}),
+		);
+
+		const { error } = await resend.emails.send({
+			from: "RW Accounting <no-reply@notifications.ryzeware.com>",
+			to: args.email,
+			subject: "Your account has been created",
+			html,
+		});
+
+		if (error) {
+			console.error(`Failed to send account created email to ${args.email}:`, error.message);
+			throw new Error(error.message);
+		}
+
+		console.log(`Account created email sent to ${args.email} (user: ${args.userId}).`);
 	},
 });

@@ -10,7 +10,20 @@ const CONTACTS_GROUP_ID = "group_mkz6hksg";
  * Execute the createFromMonday action with error handling.
  */
 const createContact = async (ctx: ActionCtx, contact: NormalizedContact): Promise<MondayHandlerResult> => {
+	console.log("[Contact] Creating/updating contact:", {
+		email: contact.email,
+		name: contact.name,
+		externalId: contact.externalId,
+		firstName: contact.firstName,
+		lastName: contact.lastName,
+		isActive: contact.isActive,
+	});
+
 	if (!contact.email || !contact.name) {
+		console.error("[Contact] Missing required fields:", {
+			hasEmail: !!contact.email,
+			hasName: !!contact.name,
+		});
 		return { status: 400, json: { success: false, error: "Email and name are required." } };
 	}
 
@@ -22,9 +35,16 @@ const createContact = async (ctx: ActionCtx, contact: NormalizedContact): Promis
 			firstName: contact.firstName,
 			lastName: contact.lastName,
 			phone: contact.phone,
+			isActive: contact.isActive,
 		});
+		console.log("[Contact] Successfully created/updated contact:", contact.email);
 		return { status: 200, json: { success: true } };
 	} catch (error: any) {
+		console.error("[Contact] Error creating/updating contact:", {
+			email: contact.email,
+			error: error?.message,
+			stack: error?.stack,
+		});
 		return { status: 500, json: { success: false, error: error?.message ?? "Internal server error." } };
 	}
 };

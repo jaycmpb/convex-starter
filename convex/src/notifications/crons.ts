@@ -1,5 +1,5 @@
-import { internalMutation } from "@convex/_generated/server";
 import { internal } from "@convex/_generated/api";
+import { internalMutation } from "@convex/_generated/server";
 
 /**
  * Check for tasks that have been incomplete for 3+ days and send reminder notifications.
@@ -10,7 +10,10 @@ export const checkOverdueTasks = internalMutation({
 		const threeDaysAgo = Date.now() - 3 * 24 * 60 * 60 * 1000;
 
 		// Get all incomplete tasks.
-		const allTasks = await ctx.db.query("tasks").filter((q) => q.eq(q.field("deletedAt"), undefined)).collect();
+		const allTasks = await ctx.db
+			.query("tasks")
+			.filter((q) => q.eq(q.field("deletedAt"), undefined))
+			.collect();
 
 		// Filter tasks that are incomplete and were created more than 3 days ago.
 		const completedStatuses = ["done", "completed", "complete", "closed"];
@@ -34,13 +37,7 @@ export const checkOverdueTasks = internalMutation({
 			const recentReminders = await ctx.db
 				.query("notifications")
 				.withIndex("by_accountId", (q) => q.eq("accountId", workItem.accountId))
-				.filter((q) =>
-					q.and(
-						q.eq(q.field("type"), "task_reminder"),
-						q.eq(q.field("taskId"), task._id),
-						q.gte(q.field("_creationTime"), threeDaysAgo),
-					),
-				)
+				.filter((q) => q.and(q.eq(q.field("type"), "task_reminder"), q.eq(q.field("taskId"), task._id), q.gte(q.field("_creationTime"), threeDaysAgo)))
 				.collect();
 
 			// Only send reminder if we haven't sent one in the last 3 days.
@@ -63,4 +60,3 @@ export const checkOverdueTasks = internalMutation({
 		console.log(`Checked ${allTasks.length} tasks, found ${overdueTasks.length} overdue tasks.`);
 	},
 });
-

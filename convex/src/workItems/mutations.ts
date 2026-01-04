@@ -1,6 +1,7 @@
 import { internalMutation, mutation } from "@convex/_generated/server";
 import { ErrorCodes } from "@convex/src/_shared/errorCodes";
 import { internal } from "@convex/_generated/api";
+import type { Id } from "@convex/_generated/dataModel";
 import { v } from "convex/values";
 
 /**

@@ -15,6 +15,20 @@ export const getAllAccounts = query({
 });
 
 /**
+ * Get all client accounts for staff members.
+ * This is an alias for getAllAccounts but provided for clarity in staff context.
+ * @returns Array of all active client accounts.
+ */
+export const getAllClients = query({
+	handler: async (ctx) => {
+		return await ctx.db
+			.query("accounts")
+			.filter((q) => q.eq(q.field("deletedAt"), undefined))
+			.collect();
+	},
+});
+
+/**
  * Get an account by its ID.
  * @param id - The account ID.
  * @returns The account document or null if not found.

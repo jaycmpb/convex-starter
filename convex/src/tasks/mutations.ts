@@ -1,4 +1,5 @@
 import { internalMutation, mutation } from "@convex/_generated/server";
+import type { Id } from "@convex/_generated/dataModel";
 import { ErrorCodes } from "@convex/src/_shared/errorCodes";
 import { internal } from "@convex/_generated/api";
 import { v } from "convex/values";
@@ -57,6 +58,110 @@ export const createTask = mutation({
 			dueAt: args.dueAt,
 			externalId: args.externalId,
 		});
+	},
+});
+
+/**
+ * Update a task (internal mutation version for use in actions).
+ * @param id - The task ID.
+ * @param name - Optional new name.
+ * @param status - Optional new status.
+ * @param description - Optional new description.
+ * @param dueAt - Optional new due date timestamp.
+ * @returns The updated task document.
+ */
+export const updateTaskInternal = internalMutation({
+	args: {
+		id: v.id("tasks"),
+		name: v.optional(v.string()),
+		status: v.optional(v.string()),
+		description: v.optional(v.string()),
+		dueAt: v.optional(v.number()),
+	},
+	handler: async (ctx, args) => {
+		const task = await ctx.db.get(args.id);
+		if (!task || task.deletedAt) {
+			throw new Error(
+				JSON.stringify({
+					...ErrorCodes.NOT_FOUND,
+					message: "Task not found.",
+				}),
+			);
+		}
+
+		const updates: {
+			name?: string;
+			status?: string;
+			description?: string;
+			dueAt?: number;
+		} = {};
+
+		if (args.name !== undefined) {
+			updates.name = args.name;
+		}
+
+		if (args.status !== undefined) {
+			updates.status = args.status;
+		}
+
+		if (args.description !== undefined) {
+			updates.description = args.description;
+		}
+
+		if (args.dueAt !== undefined) {
+			updates.dueAt = args.dueAt;
+		}
+
+		await ctx.db.patch(args.id, updates);
+
+		const updatedTask = await ctx.db.get(args.id);
+		if (!updatedTask) {
+			throw new Error(
+				JSON.stringify({
+					...ErrorCodes.NOT_FOUND,
+					message: "Task not found after update.",
+				}),
+			);
+		}
+
+		// Check if task was marked as completed.
+		const completedStatuses = ["done", "completed", "complete", "closed"];
+		const wasIncomplete = !completedStatuses.includes(task.status.toLowerCase());
+		const isNowComplete = completedStatuses.includes(updatedTask.status.toLowerCase());
+
+		if (args.status !== undefined) {
+			// Get work item to find account ID.
+			const workItem = await ctx.db.get(updatedTask.workItemId);
+			if (workItem && !workItem._deletionTime) {
+				// Check if task was just completed.
+				if (wasIncomplete && isNowComplete) {
+					await ctx.scheduler.runAfter(0, internal.src.notifications.helpers.createNotificationsForAccountUsers, {
+						accountId: workItem.accountId,
+						type: "task_completed",
+						title: "Task Completed",
+						message: `The task "${updatedTask.name}" has been marked as complete.`,
+						taskId: updatedTask._id,
+						workItemId: updatedTask.workItemId,
+					});
+				}
+
+				// Check if task was reopened (complete → incomplete).
+				const wasComplete = completedStatuses.includes(task.status.toLowerCase());
+				const isNowIncomplete = !completedStatuses.includes(updatedTask.status.toLowerCase());
+				if (wasComplete && isNowIncomplete) {
+					await ctx.scheduler.runAfter(0, internal.src.notifications.helpers.createNotificationsForAccountUsers, {
+						accountId: workItem.accountId,
+						type: "task_reopened",
+						title: "Task Reopened",
+						message: `The task "${updatedTask.name}" has been reopened.`,
+						taskId: updatedTask._id,
+						workItemId: updatedTask.workItemId,
+					});
+				}
+			}
+		}
+
+		return updatedTask;
 	},
 });
 
@@ -289,8 +394,10 @@ export const upsertTaskByExternalId = mutation({
  * @param externalId - The Monday.com sub-item pulse ID.
  * @param name - The task name.
  * @param status - The Monday.com status label (stored as-is).
+ * @param type - Optional task type (document or questionnaire).
  * @param description - Optional task description (Details column).
  * @param dueAt - Optional due date timestamp.
+ * @param teamAssigneeExternalId - Optional staff user external ID (Team Assignee column).
  * @returns The ID of the created or updated task, or error if work item not found.
  */
 export const upsertTaskFromMonday = internalMutation({
@@ -299,8 +406,10 @@ export const upsertTaskFromMonday = internalMutation({
 		externalId: v.string(),
 		name: v.string(),
 		status: v.optional(v.string()),
+		type: v.optional(v.union(v.literal("document"), v.literal("questionnaire"), v.literal("question"), v.literal("chat"))),
 		description: v.optional(v.string()),
 		dueAt: v.optional(v.number()),
+		teamAssigneeExternalId: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
 		// Look up the work item by external ID (parent item).
@@ -314,6 +423,18 @@ export const upsertTaskFromMonday = internalMutation({
 		}
 
 		const status = args.status ?? "Not Started";
+
+		// Look up team assignee user if provided, or explicitly clear if not.
+		let teamAssigneeId: Id<"users"> | undefined = undefined;
+		if (args.teamAssigneeExternalId !== undefined && args.teamAssigneeExternalId !== "") {
+			const teamAssignee = await ctx.db
+				.query("users")
+				.withIndex("by_externalId", (q) => q.eq("externalId", args.teamAssigneeExternalId))
+				.first();
+			if (teamAssignee) {
+				teamAssigneeId = teamAssignee._id;
+			}
+		}
 
 		// Upsert the task.
 		const existing = await ctx.db
@@ -340,8 +461,10 @@ export const upsertTaskFromMonday = internalMutation({
 				workItemId: workItem._id,
 				name: args.name,
 				status,
+				type: args.type,
 				description: args.description,
 				dueAt: args.dueAt,
+				teamAssigneeId,
 				deletedAt: undefined,
 			});
 
@@ -378,9 +501,11 @@ export const upsertTaskFromMonday = internalMutation({
 			workItemId: workItem._id,
 			name: args.name,
 			status,
+			type: args.type,
 			description: args.description,
 			dueAt: args.dueAt,
 			externalId: args.externalId,
+			teamAssigneeId,
 		});
 
 		// Create notifications for all users with access to the account.

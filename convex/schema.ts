@@ -23,8 +23,9 @@ export default defineSchema({
 		image: v.optional(v.string()),
 		isAnonymous: v.optional(v.boolean()),
 		// Custom Fields
-		role: v.optional(v.string()),
+		role: v.optional(v.union(v.literal("owner"), v.literal("admin"), v.literal("member"))),
 		isStaff: v.optional(v.boolean()),
+		isActive: v.optional(v.boolean()),
 		externalId: v.optional(v.string()),
 		firstName: v.optional(v.string()),
 		lastName: v.optional(v.string()),
@@ -81,14 +82,30 @@ export default defineSchema({
 		workItemId: v.id("workItems"),
 		name: v.string(),
 		status: v.string(),
+		type: v.optional(v.union(v.literal("document"), v.literal("questionnaire"), v.literal("question"), v.literal("chat"))),
 		description: v.optional(v.string()),
 		dueAt: v.optional(v.number()),
 		externalId: v.optional(v.string()),
+		teamAssigneeId: v.optional(v.id("users")),
 		deletedAt: v.optional(v.number()),
 	})
 		.index("by_workItemId", ["workItemId"])
 		.index("by_externalId", ["externalId"])
-		.index("by_workItemId_status", ["workItemId", "status"]),
+		.index("by_workItemId_status", ["workItemId", "status"])
+		.index("by_teamAssigneeId", ["teamAssigneeId"]),
+
+	chatMessages: defineTable({
+		taskId: v.id("tasks"),
+		content: v.string(),
+		senderType: v.union(v.literal("contact"), v.literal("employee"), v.literal("ai")),
+		senderName: v.string(),
+		senderId: v.optional(v.id("users")),
+		externalId: v.optional(v.string()),
+		createdAt: v.number(),
+	})
+		.index("by_taskId", ["taskId"])
+		.index("by_externalId", ["externalId"])
+		.index("by_taskId_createdAt", ["taskId", "createdAt"]),
 
 	folders: defineTable({
 		accountId: v.id("accounts"),

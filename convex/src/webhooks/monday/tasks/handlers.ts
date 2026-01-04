@@ -2,6 +2,7 @@ import { internal } from "@convex/_generated/api";
 import { ActionCtx } from "@convex/_generated/server";
 import type { MondayHandler, MondayHandlerResult } from "@convex/src/webhooks/monday/types";
 import { ensureTask, isValidTaskBoard, normalizeTask, type NormalizedTask } from "@convex/src/webhooks/monday/tasks/helpers";
+import { handleCreateUpdate } from "@convex/src/webhooks/monday/updates/handlers";
 
 /**
  * Sync a task to Convex.
@@ -12,6 +13,7 @@ const syncTask = async (ctx: ActionCtx, task: NormalizedTask): Promise<MondayHan
 		name: task.name,
 		workItemExternalId: task.workItemExternalId,
 		status: task.status,
+		teamAssigneeExternalId: task.teamAssigneeExternalId ?? "NOT SET",
 	});
 
 	if (!task.externalId || !task.workItemExternalId) {
@@ -34,8 +36,10 @@ const syncTask = async (ctx: ActionCtx, task: NormalizedTask): Promise<MondayHan
 			externalId: task.externalId,
 			name: task.name,
 			status: task.status,
+			type: task.type,
 			description: task.description,
 			dueAt: task.dueAt,
+			teamAssigneeExternalId: task.teamAssigneeExternalId,
 		});
 
 		console.log("[Task] Upsert result:", result);
@@ -71,6 +75,8 @@ export const handleUpdateColumnValue: MondayHandler = async (ctx, payload) => {
 	const normalized = normalizeTask({
 		subitem: enriched.subitem,
 		columnValues: enriched.columnValues,
+		webhookColumnId: payload.event?.columnId ?? payload.body?.columnId,
+		webhookColumnValue: payload.event?.value ?? payload.body?.value,
 	});
 
 	return syncTask(ctx, normalized);
@@ -135,4 +141,5 @@ export const taskHandlers: Record<string, MondayHandler> = {
 	update_column_value: handleUpdateColumnValue,
 	create_subitem_pulse: handleCreateSubitemPulse,
 	update_name: handleChangeSubitemName,
+	create_update: handleCreateUpdate,
 };
