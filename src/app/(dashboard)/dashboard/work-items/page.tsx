@@ -8,8 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { api } from "@convex/_generated/api";
+import type { Id } from "@convex/_generated/dataModel";
 import { useQuery } from "convex/react";
-import { AlertCircle, CheckSquare, ChevronDown, ChevronRight, Clock, FileText, MessageSquare, ClipboardList, Search, X } from "lucide-react";
+import { AlertCircle, CheckSquare, ChevronDown, ChevronRight, Clock, FileText, MessageSquare, ClipboardList, Search, Sparkles, X } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { DocumentUploadDialog } from "@/components/documents/document-upload-dialog";
@@ -523,9 +524,17 @@ function TaskRow({
 	const isChatTask = task.type === "chat";
 	const taskDocument = useQuery(
 		api.src.documents.queries.getDocumentsByTaskId,
-		isDocumentTask ? { taskId: task._id as any } : "skip",
+		isDocumentTask ? { taskId: task._id as Id<"tasks"> } : "skip",
 	);
 	const hasDocument = taskDocument && taskDocument.length > 0;
+
+	// Fetch AI analysis for staff on document tasks (just to show indicator).
+	const aiAnalysis = useQuery(
+		api.src.tasks.queries.getTaskAiAnalysis,
+		isStaff && isDocumentTask ? { id: task._id as Id<"tasks"> } : "skip",
+	);
+	const hasAiAnalysis = aiAnalysis !== null && aiAnalysis !== undefined;
+
 	const getStatusIcon = (status: string) => {
 		const s = status.toLowerCase();
 		if (s === "urgent" || s === "pending") {
@@ -563,6 +572,10 @@ function TaskRow({
 				)}
 				{isChatTask && (
 					<MessageSquare className="h-4 w-4 text-primary" />
+				)}
+				{/* AI Analysis indicator for staff (click task to view in preview) */}
+				{isStaff && hasAiAnalysis && (
+					<Sparkles className="h-4 w-4 text-purple-400" title="AI Analysis available - click to view" />
 				)}
 			</div>
 			<Badge className={`flex items-center gap-1 w-fit ${getStatusBadgeClassName(task.status)}`}>

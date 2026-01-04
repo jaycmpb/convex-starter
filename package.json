@@ -33,7 +33,10 @@
 		"vitest": "^3.0.5"
 	},
 	"dependencies": {
+		"@ai-sdk/anthropic": "2",
+		"@ai-sdk/openai": "2",
 		"@auth/core": "0.37.0",
+		"@convex-dev/agent": "^0.3.2",
 		"@convex-dev/auth": "^0.0.90",
 		"@convex-dev/resend": "^0.2.3",
 		"@hono/standard-validator": "^0.1.5",

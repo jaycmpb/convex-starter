@@ -89,6 +89,23 @@ export default defineSchema({
 		teamAssigneeId: v.optional(v.id("users")),
 		templateId: v.optional(v.id("templates")),
 		deletedAt: v.optional(v.number()),
+		/** AI-generated analysis of uploaded documents. Staff-only, not visible to clients. */
+		aiAnalysis: v.optional(
+			v.object({
+				/** Plain-English summary of uploaded documents. */
+				summary: v.string(),
+				/** Completeness assessment: complete, incomplete, or unclear. */
+				completeness: v.union(v.literal("complete"), v.literal("incomplete"), v.literal("unclear")),
+				/** List of items that appear to be missing. */
+				missingItems: v.array(v.string()),
+				/** List of items that seem suspicious or need review. */
+				suspiciousItems: v.array(v.string()),
+				/** Timestamp of when the analysis was generated. */
+				analyzedAt: v.number(),
+				/** IDs of documents that were analyzed. */
+				analyzedDocumentIds: v.array(v.id("documents")),
+			}),
+		),
 	})
 		.index("by_workItemId", ["workItemId"])
 		.index("by_externalId", ["externalId"])

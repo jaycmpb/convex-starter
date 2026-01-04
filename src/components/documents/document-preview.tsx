@@ -83,9 +83,9 @@ export function DocumentPreview({
 
 	return (
 		<div className={`flex items-center justify-center p-8 bg-muted rounded-lg ${className}`}>
-			<div className="text-center">
+			<div className="text-center max-w-full">
 				<FileIcon className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
-				<p className="font-medium mb-1">{name}</p>
+				<p className="font-medium mb-1 truncate max-w-xs mx-auto" title={name}>{name}</p>
 				<p className="text-sm text-muted-foreground">
 					Preview not available for this file type
 				</p>

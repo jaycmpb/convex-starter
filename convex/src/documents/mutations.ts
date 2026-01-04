@@ -1,5 +1,6 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { mutation } from "@convex/_generated/server";
+import { internal } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import { ErrorCodes } from "@convex/src/_shared/errorCodes";
 import { v } from "convex/values";
@@ -101,7 +102,7 @@ export const createDocument = mutation({
 			}
 		}
 
-		return await ctx.db.insert("documents", {
+		const documentId = await ctx.db.insert("documents", {
 			storageId: args.storageId,
 			name: args.name,
 			uploadedBy: args.uploadedBy,
@@ -112,6 +113,15 @@ export const createDocument = mutation({
 			mimeType: args.mimeType,
 			size: args.size,
 		});
+
+		// Trigger AI analysis if document is attached to a task.
+		if (args.taskId) {
+			await ctx.scheduler.runAfter(0, internal.src.aiWorkflows.actions.analyzeTaskDocuments, {
+				taskId: args.taskId,
+			});
+		}
+
+		return documentId;
 	},
 });
 
@@ -231,10 +241,11 @@ export const moveDocument = mutation({
 });
 
 /**
- * Replace a document's file (updates storage ID).
+ * Replace a document's file (updates storage ID, name, etc.).
  * Used when a client uploads a new version of a document.
  * @param id - The document ID.
  * @param storageId - The new Convex storage file ID.
+ * @param name - Optional new file name.
  * @param mimeType - Optional new MIME type.
  * @param size - Optional new file size in bytes.
  * @returns The updated document.
@@ -243,6 +254,7 @@ export const replaceDocumentFile = mutation({
 	args: {
 		id: v.id("documents"),
 		storageId: v.id("_storage"),
+		name: v.optional(v.string()),
 		mimeType: v.optional(v.string()),
 		size: v.optional(v.number()),
 	},
@@ -279,11 +291,16 @@ export const replaceDocumentFile = mutation({
 
 		const updates: {
 			storageId: Id<"_storage">;
+			name?: string;
 			mimeType?: string;
 			size?: number;
 		} = {
 			storageId: args.storageId,
 		};
+
+		if (args.name !== undefined) {
+			updates.name = args.name;
+		}
 
 		if (args.mimeType !== undefined) {
 			updates.mimeType = args.mimeType;
@@ -294,6 +311,14 @@ export const replaceDocumentFile = mutation({
 		}
 
 		await ctx.db.patch(args.id, updates);
+
+		// Re-trigger AI analysis if document is attached to a task (file content changed).
+		if (document.taskId) {
+			await ctx.scheduler.runAfter(0, internal.src.aiWorkflows.actions.analyzeTaskDocuments, {
+				taskId: document.taskId,
+			});
+		}
+
 		return await ctx.db.get(args.id);
 	},
 });
@@ -356,6 +381,14 @@ export const deleteDocument = mutation({
 		}
 
 		await ctx.db.patch(args.id, { deletedAt: Date.now() });
+
+		// Re-trigger AI analysis if document was attached to a task.
+		if (document.taskId) {
+			await ctx.scheduler.runAfter(0, internal.src.aiWorkflows.actions.analyzeTaskDocuments, {
+				taskId: document.taskId,
+			});
+		}
+
 		return args.id;
 	},
 });
@@ -403,6 +436,14 @@ export const restoreDocument = mutation({
 		}
 
 		await ctx.db.patch(args.id, { deletedAt: undefined });
+
+		// Re-trigger AI analysis if document is attached to a task.
+		if (document.taskId) {
+			await ctx.scheduler.runAfter(0, internal.src.aiWorkflows.actions.analyzeTaskDocuments, {
+				taskId: document.taskId,
+			});
+		}
+
 		return await ctx.db.get(args.id);
 	},
 });

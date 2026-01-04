@@ -76,12 +76,12 @@ export function FileDropzone({ onFileSelect, accept, className }: FileDropzonePr
 				onChange={handleFileInput}
 			/>
 			{selectedFile ? (
-				<div className="flex items-center gap-4">
-					<div className="flex h-12 w-12 items-center justify-center rounded-lg bg-muted">
+				<div className="flex items-center gap-4 max-w-full overflow-hidden">
+					<div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-muted">
 						<FileIcon className="h-6 w-6 text-muted-foreground" />
 					</div>
 					<div className="flex-1 min-w-0">
-						<p className="font-medium truncate">{selectedFile.name}</p>
+						<p className="font-medium truncate" title={selectedFile.name}>{selectedFile.name}</p>
 						<p className="text-sm text-muted-foreground">
 							{(selectedFile.size / 1024).toFixed(1)} KB
 						</p>
@@ -89,7 +89,7 @@ export function FileDropzone({ onFileSelect, accept, className }: FileDropzonePr
 					<Button
 						variant="ghost"
 						size="icon"
-						className="h-8 w-8"
+						className="h-8 w-8 shrink-0"
 						onClick={handleRemove}
 					>
 						<X className="h-4 w-4" />

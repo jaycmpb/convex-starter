@@ -148,3 +148,24 @@ export const getTaskWithDocument = query({
 		};
 	},
 });
+
+
+/**
+ * Get a task's AI analysis by task ID.
+ * Staff-only query for viewing document intake intelligence.
+ * @param id - The task ID.
+ * @returns The AI analysis or null if not available.
+ */
+export const getTaskAiAnalysis = query({
+	args: {
+		id: v.id("tasks"),
+	},
+	handler: async (ctx, args) => {
+		const task = await ctx.db.get(args.id);
+		if (!task || task.deletedAt) {
+			return null;
+		}
+
+		return task.aiAnalysis ?? null;
+	},
+});

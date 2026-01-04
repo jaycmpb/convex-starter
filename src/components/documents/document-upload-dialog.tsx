@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
+import type { Id } from "@convex/_generated/dataModel";
 import {
 	Dialog,
 	DialogContent,
@@ -13,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { FileDropzone } from "./file-dropzone";
 import { DocumentPreview } from "./document-preview";
+import { AiAnalysisPanel } from "@/components/ai/ai-analysis-panel";
 import { useAccount } from "@/components/providers/account-provider";
 import { Loader2 } from "lucide-react";
 
@@ -33,12 +35,18 @@ export function DocumentUploadDialog({
 
 	const taskWithDocument = useQuery(
 		api.src.tasks.queries.getTaskWithDocument,
-		open ? { id: taskId as any } : "skip",
+		open ? { id: taskId as Id<"tasks"> } : "skip",
 	);
 
 	const userData = useQuery(api.src.users.queries.meWithSelectedAccount);
 	const currentUserId = userData?.user?._id;
 	const isStaff = userData?.user?.isStaff ?? false;
+
+	// Fetch AI analysis for staff users.
+	const aiAnalysis = useQuery(
+		api.src.tasks.queries.getTaskAiAnalysis,
+		open && isStaff ? { id: taskId as Id<"tasks"> } : "skip",
+	);
 
 	const generateUploadUrl = useAction(api.src.documents.actions.generateUploadUrl);
 	const createDocument = useMutation(api.src.documents.mutations.createDocument);
@@ -83,6 +91,7 @@ export function DocumentUploadDialog({
 				await replaceDocumentFile({
 					id: taskWithDocument.document._id,
 					storageId: storageId as any,
+					name: selectedFile.name,
 					mimeType: selectedFile.type,
 					size: selectedFile.size,
 				});
@@ -160,6 +169,10 @@ export function DocumentUploadDialog({
 				<div className="space-y-6">
 					{hasExistingDocument && existingDocument ? (
 						<div className="space-y-4">
+							{/* AI Analysis Panel (staff only) */}
+							{isStaff && aiAnalysis && (
+								<AiAnalysisPanel analysis={aiAnalysis} />
+							)}
 							<div>
 								<h3 className="text-sm font-medium mb-2">Current Document</h3>
 								<DocumentPreview
