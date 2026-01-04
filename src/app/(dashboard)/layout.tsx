@@ -34,7 +34,6 @@ import {
 	CheckSquare,
 	FileText,
 	BarChart3,
-	MessageSquare,
 	Landmark,
 	LogOut,
 	ChevronsUpDown,
@@ -134,11 +133,6 @@ function NavMenu() {
 			url: "/dashboard/reports",
 			icon: BarChart3,
 		},
-		{
-			title: "Messages",
-			url: "/dashboard/messages",
-			icon: MessageSquare,
-		},
 	];
 
 	const staffNavItems = [
@@ -161,11 +155,6 @@ function NavMenu() {
 			title: "Clients",
 			url: "/dashboard/clients",
 			icon: Users,
-		},
-		{
-			title: "Messages",
-			url: "/dashboard/messages",
-			icon: MessageSquare,
 		},
 		{
 			title: "Templates",

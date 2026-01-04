@@ -87,12 +87,14 @@ export default defineSchema({
 		dueAt: v.optional(v.number()),
 		externalId: v.optional(v.string()),
 		teamAssigneeId: v.optional(v.id("users")),
+		templateId: v.optional(v.id("templates")),
 		deletedAt: v.optional(v.number()),
 	})
 		.index("by_workItemId", ["workItemId"])
 		.index("by_externalId", ["externalId"])
 		.index("by_workItemId_status", ["workItemId", "status"])
-		.index("by_teamAssigneeId", ["teamAssigneeId"]),
+		.index("by_teamAssigneeId", ["teamAssigneeId"])
+		.index("by_templateId", ["templateId"]),
 
 	chatMessages: defineTable({
 		taskId: v.id("tasks"),
@@ -155,4 +157,143 @@ export default defineSchema({
 		.index("by_userId", ["userId"])
 		.index("by_userId_readAt", ["userId", "readAt"])
 		.index("by_accountId", ["accountId"]),
+
+	templates: defineTable({
+		name: v.string(),
+		description: v.optional(v.string()),
+		sections: v.optional(
+			v.array(
+				v.object({
+					id: v.string(),
+					title: v.string(),
+					description: v.optional(v.string()),
+					collapsed: v.optional(v.boolean()),
+				}),
+			),
+		),
+		questions: v.array(
+			v.object({
+				id: v.string(),
+				type: v.union(
+					v.literal("short_text"),
+					v.literal("long_text"),
+					v.literal("email"),
+					v.literal("phone"),
+					v.literal("number"),
+					v.literal("date"),
+					v.literal("single_choice"),
+					v.literal("multiple_choice"),
+					v.literal("dropdown"),
+					v.literal("consent"),
+					v.literal("file_upload"),
+					v.literal("signature"),
+					v.literal("rating"),
+					v.literal("address"),
+				),
+				title: v.string(),
+				description: v.optional(v.string()),
+				required: v.boolean(),
+				sectionId: v.optional(v.string()),
+				options: v.optional(v.array(v.string())),
+				validations: v.optional(
+					v.object({
+						min: v.optional(v.number()),
+						max: v.optional(v.number()),
+						pattern: v.optional(v.string()),
+						minLength: v.optional(v.number()),
+						maxLength: v.optional(v.number()),
+					}),
+				),
+				condition: v.optional(
+					v.object({
+						questionId: v.string(),
+						operator: v.union(v.literal("equals"), v.literal("not_equals"), v.literal("contains")),
+						value: v.string(),
+					}),
+				),
+			}),
+		),
+		locked: v.optional(v.boolean()),
+		externalId: v.optional(v.string()),
+		createdBy: v.id("users"),
+		deletedAt: v.optional(v.number()),
+	})
+		.index("by_externalId", ["externalId"])
+		.index("by_createdBy", ["createdBy"]),
+
+	templateResponses: defineTable({
+		taskId: v.id("tasks"),
+		templateId: v.id("templates"),
+		templateSnapshot: v.optional(
+			v.object({
+				name: v.string(),
+				description: v.optional(v.string()),
+				sections: v.optional(
+					v.array(
+						v.object({
+							id: v.string(),
+							title: v.string(),
+							description: v.optional(v.string()),
+							collapsed: v.optional(v.boolean()),
+						}),
+					),
+				),
+				questions: v.array(
+					v.object({
+						id: v.string(),
+						type: v.union(
+							v.literal("short_text"),
+							v.literal("long_text"),
+							v.literal("email"),
+							v.literal("phone"),
+							v.literal("number"),
+							v.literal("date"),
+							v.literal("single_choice"),
+							v.literal("multiple_choice"),
+							v.literal("dropdown"),
+							v.literal("consent"),
+							v.literal("file_upload"),
+							v.literal("signature"),
+							v.literal("rating"),
+							v.literal("address"),
+						),
+						title: v.string(),
+						description: v.optional(v.string()),
+						required: v.boolean(),
+						sectionId: v.optional(v.string()),
+						options: v.optional(v.array(v.string())),
+						validations: v.optional(
+							v.object({
+								min: v.optional(v.number()),
+								max: v.optional(v.number()),
+								pattern: v.optional(v.string()),
+								minLength: v.optional(v.number()),
+								maxLength: v.optional(v.number()),
+							}),
+						),
+						condition: v.optional(
+							v.object({
+								questionId: v.string(),
+								operator: v.union(v.literal("equals"), v.literal("not_equals"), v.literal("contains")),
+								value: v.string(),
+							}),
+						),
+					}),
+				),
+			}),
+		),
+		answers: v.array(
+			v.object({
+				questionId: v.string(),
+				value: v.any(),
+			}),
+		),
+		currentQuestionIndex: v.number(),
+		status: v.union(v.literal("in_progress"), v.literal("completed")),
+		completedAt: v.optional(v.number()),
+		lastSavedAt: v.number(),
+	})
+		.index("by_taskId", ["taskId"])
+		.index("by_templateId", ["templateId"])
+		.index("by_taskId_status", ["taskId", "status"]),
 });

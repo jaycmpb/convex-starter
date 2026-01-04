@@ -57,6 +57,7 @@ export const TASK_COLUMNS = {
 	teamAssignee: ["board_relation_mkz9h3m7", "board_relation_mkz93e04"],
 	dueDate: "date0",
 	type: "dropdown_mkz69n1v",
+	template: ["board_relation_mkz99yqy", "board_relation_mkz9jtqh"], // Personal, Business
 };
 
 /**
@@ -65,6 +66,23 @@ export const TASK_COLUMNS = {
 export const WORK_ITEM_BOARDS: Record<string, { typeName: string; accountType: "personal" | "business" }> = {
 	"18393607685": { typeName: "Personal Tax Returns", accountType: "personal" },
 	"18393608944": { typeName: "Business Tax Returns", accountType: "business" },
+};
+
+/**
+ * Monday.com Templates board ID.
+ * This board stores template references that can be linked to tasks.
+ */
+export const TEMPLATES_BOARD_ID = "18393823908";
+
+/**
+ * Column IDs for Monday.com Templates board.
+ * Status labels: "Unlocked" (id: 1), "Locked" (id: 2).
+ */
+export const TEMPLATE_COLUMNS = {
+	name: "name",
+	convexId: "text_mkz9bx5y",
+	status: "status",
+	date: "date4",
 };
 
 /**

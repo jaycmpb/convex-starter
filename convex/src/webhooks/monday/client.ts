@@ -161,14 +161,14 @@ type ChangeColumnValueResponse = {
 };
 
 /**
- * Update a Monday.com sub-item column value.
- * @param itemId - The sub-item pulse ID.
- * @param boardId - The board ID containing the sub-item.
+ * Update a Monday.com item or sub-item column value.
+ * @param itemId - The item or sub-item pulse ID.
+ * @param boardId - The board ID containing the item.
  * @param columnId - The column ID to update.
- * @param value - The value to set. For status columns, use JSON format: {"label":"Status Label"}.
+ * @param value - The value to set. For text columns, pass as string. For status columns, use JSON format: {"label":"Status Label"}.
  * @returns True if successful, false otherwise.
  */
-export const updateSubItemColumnValue = async (
+export const updateItemColumnValue = async (
 	itemId: string,
 	boardId: string,
 	columnId: string,
@@ -205,6 +205,56 @@ export const updateSubItemColumnValue = async (
 	} catch (error) {
 		console.error("Failed to update Monday.com column value:", error);
 		return false;
+	}
+};
+
+/**
+ * Update a Monday.com sub-item column value.
+ * @deprecated Use updateItemColumnValue instead.
+ */
+export const updateSubItemColumnValue = updateItemColumnValue;
+
+type CreateItemResponse = {
+	create_item: {
+		id: string;
+	};
+};
+
+/**
+ * Create a new item on a Monday.com board.
+ * @param boardId - The board ID.
+ * @param itemName - The item name.
+ * @param groupId - Optional group ID. If not provided, item is created in the first group.
+ * @returns The created item ID if successful, null otherwise.
+ */
+export const createItem = async (boardId: string, itemName: string, groupId?: string): Promise<string | null> => {
+	const token = process.env.MONDAY_API_KEY;
+	if (!token) {
+		throw new Error("MONDAY_API_KEY is not set.");
+	}
+
+	const mutation = `
+    mutation ($boardId: ID!, $itemName: String!, $groupId: String) {
+      create_item(board_id: $boardId, item_name: $itemName, group_id: $groupId) {
+        id
+      }
+    }
+  `;
+
+	try {
+		const variables: { boardId: string; itemName: string; groupId?: string } = {
+			boardId,
+			itemName,
+		};
+		if (groupId) {
+			variables.groupId = groupId;
+		}
+
+		const res = await monday.request<CreateItemResponse>(mutation, variables);
+		return res?.create_item?.id ?? null;
+	} catch (error) {
+		console.error("Failed to create Monday.com item:", error);
+		return null;
 	}
 };
 

@@ -1,5 +1,5 @@
 import { fetchSubItem, type MondaySubItemWithParent } from "@convex/src/webhooks/monday/client";
-import { extractValue, type MondayColumnValue, parseColumnValues, TASK_COLUMNS, WORK_ITEM_BOARDS } from "@convex/src/webhooks/monday/helpers";
+import { extractValue, type MondayColumnValue, TASK_COLUMNS, WORK_ITEM_BOARDS } from "@convex/src/webhooks/monday/helpers";
 import type { MondayWebhookPayload } from "@convex/src/webhooks/monday/types";
 
 export type NormalizedTask = {
@@ -11,6 +11,7 @@ export type NormalizedTask = {
 	description?: string;
 	dueAt?: number;
 	teamAssigneeExternalId?: string;
+	templateExternalId?: string;
 };
 
 /**
@@ -57,7 +58,6 @@ const extractLinkedId = (values: MondayColumnValue[], columnId: string | string[
 	return undefined;
 };
 
-
 /**
  * Extract the first linked item ID from a Monday.com webhook value payload.
  * Used for update_column_value events where we have the exact webhook value.
@@ -70,7 +70,6 @@ const extractLinkedIdFromWebhookValue = (value: unknown): string | undefined => 
 	}
 	return undefined;
 };
-
 
 /**
  * Parse a Monday.com date column value to a Unix timestamp.
@@ -147,7 +146,20 @@ export const normalizeTask = (input: {
 		teamAssigneeExternalId = extractLinkedId(columnValues, TASK_COLUMNS.teamAssignee);
 	}
 
-	return { name, externalId, workItemExternalId, status, type, description, dueAt, teamAssigneeExternalId };
+	// Extract template ID from Template column (board_relation to Templates board).
+	// Template column has different IDs per board, similar to teamAssignee.
+	let templateExternalId: string | undefined;
+	if (TASK_COLUMNS.template) {
+		if (input.webhookColumnId && Array.isArray(TASK_COLUMNS.template) && TASK_COLUMNS.template.includes(input.webhookColumnId)) {
+			// Use webhook value directly.
+			templateExternalId = extractLinkedIdFromWebhookValue(input.webhookColumnValue);
+		} else {
+			// Fall back to fetched column values.
+			templateExternalId = extractLinkedId(columnValues, TASK_COLUMNS.template);
+		}
+	}
+
+	return { name, externalId, workItemExternalId, status, type, description, dueAt, teamAssigneeExternalId, templateExternalId };
 };
 
 /**

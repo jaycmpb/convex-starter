@@ -40,6 +40,7 @@ const syncTask = async (ctx: ActionCtx, task: NormalizedTask): Promise<MondayHan
 			description: task.description,
 			dueAt: task.dueAt,
 			teamAssigneeExternalId: task.teamAssigneeExternalId,
+			templateExternalId: task.templateExternalId,
 		});
 
 		console.log("[Task] Upsert result:", result);

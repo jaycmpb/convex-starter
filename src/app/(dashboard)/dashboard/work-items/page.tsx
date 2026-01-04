@@ -3,14 +3,18 @@
 import { useAccount } from "@/components/providers/account-provider";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { api } from "@convex/_generated/api";
 import { useQuery } from "convex/react";
-import { AlertCircle, CheckSquare, ChevronDown, ChevronRight, Clock, FileText, MessageSquare } from "lucide-react";
-import { useState } from "react";
+import { AlertCircle, CheckSquare, ChevronDown, ChevronRight, Clock, FileText, MessageSquare, ClipboardList, Search, X } from "lucide-react";
+import { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { DocumentUploadDialog } from "@/components/documents/document-upload-dialog";
 import { ChatDialog } from "@/components/chat/chat-dialog";
+import { Button } from "@/components/ui/button";
 
 /**
  * Check if a status represents a completed state.
@@ -54,11 +58,20 @@ const getStatusBadgeClassName = (status: string): string => {
 	return "bg-[#fbbc04] text-[#78350f] border-transparent";
 };
 
+type StatusFilter = "all" | "pending" | "completed";
+type TaskTypeFilter = "all" | "document" | "questionnaire" | "chat";
+
 export default function WorkItemsPage() {
 	const { selectedAccountId } = useAccount();
 	const userData = useQuery(api.src.users.queries.meWithSelectedAccount);
 	const user = userData?.user;
 	const isStaff = user?.isStaff ?? false;
+
+	// Filter state.
+	const [searchQuery, setSearchQuery] = useState("");
+	const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+	const [taskTypeFilter, setTaskTypeFilter] = useState<TaskTypeFilter>("all");
+	const [clientFilter, setClientFilter] = useState<string>("all");
 
 	// For staff, get work items by team assignee; for clients, get by account.
 	const staffWorkItems = useQuery(
@@ -71,6 +84,77 @@ export default function WorkItemsPage() {
 	);
 
 	const workItemsWithTasks = isStaff ? staffWorkItems : clientWorkItems;
+
+	// Get unique clients for staff filter.
+	const uniqueClients = useMemo(() => {
+		if (!isStaff || !workItemsWithTasks) return [];
+		const clientMap = new Map<string, { id: string; name: string }>();
+		workItemsWithTasks.forEach((item) => {
+			if (item.account) {
+				clientMap.set(item.account._id, { id: item.account._id, name: item.account.name });
+			}
+		});
+		return Array.from(clientMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+	}, [isStaff, workItemsWithTasks]);
+
+	// Apply filters.
+	const filteredWorkItems = useMemo(() => {
+		if (!workItemsWithTasks) return [];
+
+		return workItemsWithTasks
+			.map((workItem) => {
+				// Filter tasks within each work item.
+				let filteredTasks = workItem.tasks;
+
+				// Filter by task type.
+				if (taskTypeFilter !== "all") {
+					filteredTasks = filteredTasks.filter((task) => task.type === taskTypeFilter);
+				}
+
+				// Filter by task status.
+				if (statusFilter !== "all") {
+					filteredTasks = filteredTasks.filter((task) => {
+						const isComplete = isCompletedStatus(task.status);
+						return statusFilter === "completed" ? isComplete : !isComplete;
+					});
+				}
+
+				return { ...workItem, tasks: filteredTasks };
+			})
+			.filter((workItem) => {
+				// Filter by search query (work item name).
+				if (searchQuery) {
+					const query = searchQuery.toLowerCase();
+					const nameMatch = workItem.name?.toLowerCase().includes(query);
+					const taskMatch = workItem.tasks.some((task) => task.name.toLowerCase().includes(query));
+					if (!nameMatch && !taskMatch) return false;
+				}
+
+				// Filter by client (staff only).
+				if (isStaff && clientFilter !== "all") {
+					if (workItem.account?._id !== clientFilter) return false;
+				}
+
+				// Filter by work item status.
+				if (statusFilter !== "all") {
+					const isComplete = isCompletedStatus(workItem.status);
+					const statusMatch = statusFilter === "completed" ? isComplete : !isComplete;
+					// Show work item if it matches status OR has matching tasks.
+					if (!statusMatch && workItem.tasks.length === 0) return false;
+				}
+
+				return true;
+			});
+	}, [workItemsWithTasks, searchQuery, statusFilter, taskTypeFilter, clientFilter, isStaff]);
+
+	const hasActiveFilters = searchQuery || statusFilter !== "all" || taskTypeFilter !== "all" || (isStaff && clientFilter !== "all");
+
+	const clearFilters = () => {
+		setSearchQuery("");
+		setStatusFilter("all");
+		setTaskTypeFilter("all");
+		setClientFilter("all");
+	};
 
 	if (!isStaff && !selectedAccountId) {
 		return (
@@ -97,6 +181,7 @@ export default function WorkItemsPage() {
 		);
 	}
 
+	// Stats based on unfiltered data.
 	const totalTasks = workItemsWithTasks.reduce((sum, item) => sum + item.tasks.length, 0);
 	const pendingTasks = workItemsWithTasks.reduce(
 		(sum, item) => sum + item.tasks.filter((task) => !isCompletedStatus(task.status)).length,
@@ -106,6 +191,9 @@ export default function WorkItemsPage() {
 		(sum, item) => sum + item.tasks.filter((task) => isCompletedStatus(task.status)).length,
 		0,
 	);
+
+	// Stats for filtered data.
+	const filteredTotalTasks = filteredWorkItems.reduce((sum, item) => sum + item.tasks.length, 0);
 
 	return (
 		<div className="space-y-6">
@@ -138,16 +226,93 @@ export default function WorkItemsPage() {
 				</Card>
 			</div>
 
+			{/* Filters */}
+			<Card>
+				<CardContent className="py-4">
+					<div className="flex flex-wrap items-center gap-3">
+						{/* Search */}
+						<div className="relative flex-1 min-w-[200px] max-w-sm">
+							<Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+							<Input
+								placeholder="Search work items or tasks..."
+								value={searchQuery}
+								onChange={(e) => setSearchQuery(e.target.value)}
+								className="pl-9"
+							/>
+						</div>
+
+						{/* Status Filter */}
+						<Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
+							<SelectTrigger className="w-[140px]">
+								<SelectValue placeholder="Status" />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="all">All Status</SelectItem>
+								<SelectItem value="pending">Pending</SelectItem>
+								<SelectItem value="completed">Completed</SelectItem>
+							</SelectContent>
+						</Select>
+
+						{/* Task Type Filter */}
+						<Select value={taskTypeFilter} onValueChange={(v) => setTaskTypeFilter(v as TaskTypeFilter)}>
+							<SelectTrigger className="w-[160px]">
+								<SelectValue placeholder="Task Type" />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="all">All Types</SelectItem>
+								<SelectItem value="document">Documents</SelectItem>
+								<SelectItem value="questionnaire">Questionnaires</SelectItem>
+								<SelectItem value="chat">Chat</SelectItem>
+							</SelectContent>
+						</Select>
+
+						{/* Client Filter (Staff Only) */}
+						{isStaff && uniqueClients.length > 0 && (
+							<Select value={clientFilter} onValueChange={setClientFilter}>
+								<SelectTrigger className="w-[180px]">
+									<SelectValue placeholder="Client" />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="all">All Clients</SelectItem>
+									{uniqueClients.map((client) => (
+										<SelectItem key={client.id} value={client.id}>
+											{client.name}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						)}
+
+						{/* Clear Filters */}
+						{hasActiveFilters && (
+							<Button variant="ghost" size="sm" onClick={clearFilters} className="h-9">
+								<X className="h-4 w-4 mr-1" />
+								Clear
+							</Button>
+						)}
+					</div>
+				</CardContent>
+			</Card>
+
 			{/* Work Items Table */}
 			<Card>
 				<CardHeader>
 					<CardTitle>Work Items</CardTitle>
 					<CardDescription>
-						{workItemsWithTasks.length} work item{workItemsWithTasks.length !== 1 ? "s" : ""} with {totalTasks} total task{totalTasks !== 1 ? "s" : ""}
+						{hasActiveFilters ? (
+							<>
+								Showing {filteredWorkItems.length} of {workItemsWithTasks.length} work items ({filteredTotalTasks} tasks)
+							</>
+						) : (
+							<>
+								{workItemsWithTasks.length} work item{workItemsWithTasks.length !== 1 ? "s" : ""} with {totalTasks} total task
+								{totalTasks !== 1 ? "s" : ""}
+							</>
+						)}
 					</CardDescription>
 				</CardHeader>
 				<CardContent>
-					{workItemsWithTasks.length > 0 ? (
+					{filteredWorkItems.length > 0 ? (
 						<div className="rounded-md border">
 							<Table>
 								<TableHeader>
@@ -161,7 +326,7 @@ export default function WorkItemsPage() {
 									</TableRow>
 								</TableHeader>
 								<TableBody>
-									{workItemsWithTasks.map((workItem) => (
+									{filteredWorkItems.map((workItem) => (
 										<WorkItemRow key={workItem._id} workItem={workItem} isStaff={isStaff} />
 									))}
 								</TableBody>
@@ -170,7 +335,14 @@ export default function WorkItemsPage() {
 					) : (
 						<div className="flex flex-col items-center justify-center py-12">
 							<CheckSquare className="h-12 w-12 text-muted-foreground mb-4" />
-							<p className="text-muted-foreground">No work items found</p>
+							<p className="text-muted-foreground">
+								{hasActiveFilters ? "No work items match your filters" : "No work items found"}
+							</p>
+							{hasActiveFilters && (
+								<Button variant="link" onClick={clearFilters} className="mt-2">
+									Clear filters
+								</Button>
+							)}
 						</div>
 					)}
 				</CardContent>
@@ -200,6 +372,7 @@ function WorkItemRow({
 	};
 	isStaff?: boolean;
 }) {
+	const router = useRouter();
 	const [isExpanded, setIsExpanded] = useState(false);
 	const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 	const [selectedChatTaskId, setSelectedChatTaskId] = useState<string | null>(null);
@@ -280,10 +453,14 @@ function WorkItemRow({
 										task={task}
 										index={index}
 										totalTasks={workItem.tasks.length}
+										isStaff={isStaff}
 										onClick={() => {
 											if (task.type === "chat") {
 												setSelectedChatTaskId(task._id);
-											} else if (task.type === "document" || task.type === "questionnaire") {
+											} else if (task.type === "questionnaire" && (task as any).templateId) {
+												// Navigate to questionnaire page.
+												router.push(`/dashboard/template/${task._id}`);
+											} else if (task.type === "document") {
 												setSelectedTaskId(task._id);
 											}
 										}}
@@ -324,6 +501,7 @@ function TaskRow({
 	task,
 	index,
 	totalTasks,
+	isStaff,
 	onClick,
 }: {
 	task: {
@@ -333,12 +511,15 @@ function TaskRow({
 		type?: "document" | "questionnaire" | "chat";
 		description?: string;
 		dueAt?: number;
+		templateId?: string;
 	};
 	index: number;
 	totalTasks: number;
+	isStaff?: boolean;
 	onClick: () => void;
 }) {
-	const isDocumentTask = task.type === "document" || task.type === "questionnaire";
+	const isDocumentTask = task.type === "document";
+	const isQuestionnaireTask = task.type === "questionnaire" && task.templateId;
 	const isChatTask = task.type === "chat";
 	const taskDocument = useQuery(
 		api.src.documents.queries.getDocumentsByTaskId,
@@ -363,7 +544,7 @@ function TaskRow({
 
 	const taskBgColor = getStatusBackgroundColor(task.status);
 
-	const isClickable = isDocumentTask || isChatTask;
+	const isClickable = isDocumentTask || isQuestionnaireTask || isChatTask;
 
 	return (
 		<div
@@ -376,6 +557,9 @@ function TaskRow({
 				<span className="font-medium truncate">{task.name}</span>
 				{isDocumentTask && (
 					<FileText className={`h-4 w-4 ${hasDocument ? "text-primary" : "text-muted-foreground"}`} />
+				)}
+				{isQuestionnaireTask && (
+					<ClipboardList className="h-4 w-4 text-primary" />
 				)}
 				{isChatTask && (
 					<MessageSquare className="h-4 w-4 text-primary" />

@@ -410,6 +410,7 @@ export const upsertTaskFromMonday = internalMutation({
 		description: v.optional(v.string()),
 		dueAt: v.optional(v.number()),
 		teamAssigneeExternalId: v.optional(v.string()),
+		templateExternalId: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
 		// Look up the work item by external ID (parent item).
@@ -433,6 +434,18 @@ export const upsertTaskFromMonday = internalMutation({
 				.first();
 			if (teamAssignee) {
 				teamAssigneeId = teamAssignee._id;
+			}
+		}
+
+		// Look up template if provided.
+		let templateId: Id<"templates"> | undefined = undefined;
+		if (args.templateExternalId !== undefined && args.templateExternalId !== "") {
+			const template = await ctx.db
+				.query("templates")
+				.withIndex("by_externalId", (q) => q.eq("externalId", args.templateExternalId))
+				.first();
+			if (template && !template.deletedAt) {
+				templateId = template._id;
 			}
 		}
 
@@ -465,6 +478,7 @@ export const upsertTaskFromMonday = internalMutation({
 				description: args.description,
 				dueAt: args.dueAt,
 				teamAssigneeId,
+				templateId,
 				deletedAt: undefined,
 			});
 
@@ -506,6 +520,7 @@ export const upsertTaskFromMonday = internalMutation({
 			dueAt: args.dueAt,
 			externalId: args.externalId,
 			teamAssigneeId,
+			templateId,
 		});
 
 		// Create notifications for all users with access to the account.
