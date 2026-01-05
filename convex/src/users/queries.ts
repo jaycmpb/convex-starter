@@ -90,6 +90,20 @@ export const getUserById = query({
 });
 
 /**
+ * Get a user by their ID (internal version for use in actions).
+ * @param id - The user ID.
+ * @returns The user document or null if not found.
+ */
+export const getUserByIdInternal = internalQuery({
+	args: {
+		id: v.id("users"),
+	},
+	handler: async (ctx, args) => {
+		return await ctx.db.get(args.id);
+	},
+});
+
+/**
  * Get all staff users.
  * @returns Array of all staff users.
  */

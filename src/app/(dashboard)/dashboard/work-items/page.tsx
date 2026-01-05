@@ -16,6 +16,7 @@ import { useRouter } from "next/navigation";
 import { DocumentUploadDialog } from "@/components/documents/document-upload-dialog";
 import { ChatDialog } from "@/components/chat/chat-dialog";
 import { Button } from "@/components/ui/button";
+import { WorkItemStatusSelect, TaskStatusSelect } from "@/components/ui/status-select";
 
 /**
  * Check if a status represents a completed state.
@@ -85,6 +86,9 @@ export default function WorkItemsPage() {
 	);
 
 	const workItemsWithTasks = isStaff ? staffWorkItems : clientWorkItems;
+
+	// Get task status options (same for all tasks).
+	const taskStatusOptions = useQuery(api.src.tasks.queries.getStatusOptionsForTask);
 
 	// Get unique clients for staff filter.
 	const uniqueClients = useMemo(() => {
@@ -327,9 +331,14 @@ export default function WorkItemsPage() {
 									</TableRow>
 								</TableHeader>
 								<TableBody>
-									{filteredWorkItems.map((workItem) => (
-										<WorkItemRow key={workItem._id} workItem={workItem} isStaff={isStaff} />
-									))}
+								{filteredWorkItems.map((workItem) => (
+									<WorkItemRow
+										key={workItem._id}
+										workItem={workItem}
+										isStaff={isStaff}
+										taskStatusOptions={taskStatusOptions ?? []}
+									/>
+								))}
 								</TableBody>
 							</Table>
 						</div>
@@ -355,11 +364,13 @@ export default function WorkItemsPage() {
 function WorkItemRow({
 	workItem,
 	isStaff = false,
+	taskStatusOptions = [],
 }: {
 	workItem: {
 		_id: string;
 		name?: string;
 		status: string;
+		typeId?: Id<"workItemTypes">;
 		dueAt?: number;
 		account?: { _id: string; name: string; type: "personal" | "business" };
 		tasks: Array<{
@@ -372,11 +383,19 @@ function WorkItemRow({
 		}>;
 	};
 	isStaff?: boolean;
+	taskStatusOptions?: string[];
 }) {
 	const router = useRouter();
 	const [isExpanded, setIsExpanded] = useState(false);
 	const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 	const [selectedChatTaskId, setSelectedChatTaskId] = useState<string | null>(null);
+
+	// Get status options for this work item.
+	// Note: workItem should have typeId from the query, but we check to be safe.
+	const workItemStatusOptions = useQuery(
+		api.src.workItems.queries.getStatusOptionsForWorkItem,
+		{ workItemId: workItem._id as Id<"workItems"> },
+	);
 
 	const getStatusIcon = (status: string) => {
 		const s = status.toLowerCase();
@@ -419,10 +438,12 @@ function WorkItemRow({
 					</TableCell>
 				)}
 				<TableCell>
-					<Badge className={`flex items-center gap-1 w-fit ${getStatusBadgeClassName(workItem.status)}`}>
-						{getStatusIcon(workItem.status)}
-						{workItem.status}
-					</Badge>
+					<WorkItemStatusSelect
+						workItemId={workItem._id as Id<"workItems">}
+						status={workItem.status}
+						isStaff={isStaff}
+						statusOptions={workItemStatusOptions ?? []}
+					/>
 				</TableCell>
 				<TableCell>
 					{workItem.tasks.length > 0 ? (
@@ -455,6 +476,7 @@ function WorkItemRow({
 										index={index}
 										totalTasks={workItem.tasks.length}
 										isStaff={isStaff}
+										taskStatusOptions={taskStatusOptions}
 										onClick={() => {
 											if (task.type === "chat") {
 												setSelectedChatTaskId(task._id);
@@ -503,6 +525,7 @@ function TaskRow({
 	index,
 	totalTasks,
 	isStaff,
+	taskStatusOptions = [],
 	onClick,
 }: {
 	task: {
@@ -517,6 +540,7 @@ function TaskRow({
 	index: number;
 	totalTasks: number;
 	isStaff?: boolean;
+	taskStatusOptions?: string[];
 	onClick: () => void;
 }) {
 	const isDocumentTask = task.type === "document";
@@ -578,10 +602,12 @@ function TaskRow({
 					<Sparkles className="h-4 w-4 text-purple-400" title="AI Analysis available - click to view" />
 				)}
 			</div>
-			<Badge className={`flex items-center gap-1 w-fit ${getStatusBadgeClassName(task.status)}`}>
-				{getStatusIcon(task.status)}
-				{task.status}
-			</Badge>
+			<TaskStatusSelect
+				taskId={task._id as Id<"tasks">}
+				status={task.status}
+				isStaff={isStaff}
+				statusOptions={taskStatusOptions}
+			/>
 			<span className="text-sm text-muted-foreground truncate">{task.description || "—"}</span>
 			<span className="text-sm text-muted-foreground">{task.dueAt ? formatDate(task.dueAt) : "—"}</span>
 		</div>

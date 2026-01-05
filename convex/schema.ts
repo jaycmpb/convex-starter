@@ -89,6 +89,8 @@ export default defineSchema({
 		teamAssigneeId: v.optional(v.id("users")),
 		templateId: v.optional(v.id("templates")),
 		deletedAt: v.optional(v.number()),
+		/** True when AI analysis is currently in progress. */
+		aiAnalysisPending: v.optional(v.boolean()),
 		/** AI-generated analysis of uploaded documents. Staff-only, not visible to clients. */
 		aiAnalysis: v.optional(
 			v.object({
@@ -104,6 +106,18 @@ export default defineSchema({
 				analyzedAt: v.number(),
 				/** IDs of documents that were analyzed. */
 				analyzedDocumentIds: v.array(v.id("documents")),
+				/** Recommended next actions for staff. */
+				recommendedActions: v.array(
+					v.object({
+						type: v.union(v.literal("request_missing_files"), v.literal("mark_complete")),
+						label: v.string(),
+						data: v.optional(
+							v.object({
+								missingItems: v.optional(v.array(v.string())),
+							}),
+						),
+					}),
+				),
 			}),
 		),
 	})

@@ -204,6 +204,66 @@ export const createWorkItem = mutation({
 });
 
 /**
+ * Update a work item (internal mutation version for use in actions).
+ * @param id - The work item ID.
+ * @param status - Optional new status.
+ * @param name - Optional new name.
+ * @param dueAt - Optional new due date timestamp.
+ * @returns The updated work item document.
+ */
+export const updateWorkItemInternal = internalMutation({
+	args: {
+		id: v.id("workItems"),
+		status: v.optional(v.string()),
+		name: v.optional(v.string()),
+		dueAt: v.optional(v.number()),
+	},
+	handler: async (ctx, args) => {
+		const workItem = await ctx.db.get(args.id);
+		if (!workItem || workItem._deletionTime) {
+			throw new Error(
+				JSON.stringify({
+					...ErrorCodes.NOT_FOUND,
+					message: "Work item not found.",
+				}),
+			);
+		}
+
+		const updates: {
+			status?: string;
+			name?: string;
+			dueAt?: number;
+		} = {};
+
+		if (args.status !== undefined) {
+			updates.status = args.status;
+		}
+
+		if (args.name !== undefined) {
+			updates.name = args.name;
+		}
+
+		if (args.dueAt !== undefined) {
+			updates.dueAt = args.dueAt;
+		}
+
+		await ctx.db.patch(args.id, updates);
+
+		const updatedWorkItem = await ctx.db.get(args.id);
+		if (!updatedWorkItem) {
+			throw new Error(
+				JSON.stringify({
+					...ErrorCodes.NOT_FOUND,
+					message: "Work item not found after update.",
+				}),
+			);
+		}
+
+		return updatedWorkItem;
+	},
+});
+
+/**
  * Update a work item.
  * @param id - The work item ID.
  * @param status - Optional new status.

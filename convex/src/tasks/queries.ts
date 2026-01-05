@@ -154,7 +154,7 @@ export const getTaskWithDocument = query({
  * Get a task's AI analysis by task ID.
  * Staff-only query for viewing document intake intelligence.
  * @param id - The task ID.
- * @returns The AI analysis or null if not available.
+ * @returns The AI analysis and pending status, or null if task not found.
  */
 export const getTaskAiAnalysis = query({
 	args: {
@@ -166,6 +166,24 @@ export const getTaskAiAnalysis = query({
 			return null;
 		}
 
-		return task.aiAnalysis ?? null;
+		return {
+			analysis: task.aiAnalysis ?? null,
+			isPending: task.aiAnalysisPending ?? false,
+		};
+	},
+});
+
+/**
+ * Get available status options for tasks.
+ * Returns the standard Monday.com task status labels.
+ * Note: Colors are fetched via action getTaskStatusOptionsWithColors.
+ * @returns Array of task status strings.
+ */
+export const getStatusOptionsForTask = query({
+	handler: async (ctx) => {
+		// Return the standard Monday.com task status labels.
+		// These match the status labels configured in Monday.com sub-item boards.
+		// Colors are fetched separately via the action.
+		return ["Started", "Complete", "Open", "Follow-up", "Client Responded", "N/A"];
 	},
 });

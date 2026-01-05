@@ -134,3 +134,62 @@ export const updateMessageExternalId = internalMutation({
 	},
 });
 
+/**
+ * Send a message as an employee (internal mutation).
+ * Used by actions to send messages on behalf of staff members.
+ * @param taskId - The chat task ID.
+ * @param content - The message content.
+ * @param senderName - The sender's display name.
+ * @param senderId - The sender's user ID.
+ * @returns The ID of the created message.
+ */
+export const sendMessageAsEmployee = internalMutation({
+	args: {
+		taskId: v.id("tasks"),
+		content: v.string(),
+		senderName: v.string(),
+		senderId: v.id("users"),
+	},
+	handler: async (ctx, args) => {
+		const task = await ctx.db.get(args.taskId);
+		if (!task || task.deletedAt) {
+			throw new Error(
+				JSON.stringify({
+					...ErrorCodes.NOT_FOUND,
+					message: "Task not found.",
+				}),
+			);
+		}
+
+		if (task.type !== "chat") {
+			throw new Error(
+				JSON.stringify({
+					...ErrorCodes.BAD_REQUEST,
+					message: "This task is not a chat task.",
+				}),
+			);
+		}
+
+		const messageId = await ctx.db.insert("chatMessages", {
+			taskId: args.taskId,
+			content: args.content,
+			senderType: "employee",
+			senderName: args.senderName,
+			senderId: args.senderId,
+			createdAt: Date.now(),
+		});
+
+		// Schedule sync to Monday.com if task has external ID.
+		if (task.externalId) {
+			await ctx.scheduler.runAfter(0, internal.src.chatMessages.actions.syncToMonday, {
+				messageId,
+				taskExternalId: task.externalId,
+				senderName: args.senderName,
+				content: args.content,
+			});
+		}
+
+		return messageId;
+	},
+});
+

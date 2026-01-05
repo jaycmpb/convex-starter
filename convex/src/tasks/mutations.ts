@@ -425,9 +425,11 @@ export const upsertTaskFromMonday = internalMutation({
 
 		const status = args.status ?? "Not Started";
 
-		// Look up team assignee user if provided, or explicitly clear if not.
+		// Look up team assignee user if explicitly provided.
+		// Only resolve if the arg is provided (even if empty string to clear).
+		const teamAssigneeProvided = args.teamAssigneeExternalId !== undefined;
 		let teamAssigneeId: Id<"users"> | undefined = undefined;
-		if (args.teamAssigneeExternalId !== undefined && args.teamAssigneeExternalId !== "") {
+		if (teamAssigneeProvided && args.teamAssigneeExternalId !== "") {
 			const teamAssignee = await ctx.db
 				.query("users")
 				.withIndex("by_externalId", (q) => q.eq("externalId", args.teamAssigneeExternalId))
@@ -437,9 +439,11 @@ export const upsertTaskFromMonday = internalMutation({
 			}
 		}
 
-		// Look up template if provided.
+		// Look up template if explicitly provided.
+		// Only resolve if the arg is provided (even if empty string to clear).
+		const templateProvided = args.templateExternalId !== undefined;
 		let templateId: Id<"templates"> | undefined = undefined;
-		if (args.templateExternalId !== undefined && args.templateExternalId !== "") {
+		if (templateProvided && args.templateExternalId !== "") {
 			const template = await ctx.db
 				.query("templates")
 				.withIndex("by_externalId", (q) => q.eq("externalId", args.templateExternalId))
@@ -470,17 +474,38 @@ export const upsertTaskFromMonday = internalMutation({
 				willNotify: wasIncomplete && isNowComplete,
 			});
 
-			await ctx.db.patch(existing._id, {
+			// Build patch object, only including fields that were explicitly provided.
+			const patchData: {
+				workItemId: Id<"workItems">;
+				name: string;
+				status: string;
+				type?: "document" | "questionnaire" | "question" | "chat";
+				description?: string;
+				dueAt?: number;
+				teamAssigneeId?: Id<"users">;
+				templateId?: Id<"templates">;
+				deletedAt?: number;
+			} = {
 				workItemId: workItem._id,
 				name: args.name,
 				status,
 				type: args.type,
 				description: args.description,
 				dueAt: args.dueAt,
-				teamAssigneeId,
-				templateId,
 				deletedAt: undefined,
-			});
+			};
+
+			// Only update teamAssigneeId if it was explicitly provided in the args.
+			if (teamAssigneeProvided) {
+				patchData.teamAssigneeId = teamAssigneeId;
+			}
+
+			// Only update templateId if it was explicitly provided in the args.
+			if (templateProvided) {
+				patchData.templateId = templateId;
+			}
+
+			await ctx.db.patch(existing._id, patchData);
 
 			// Check if task was just completed.
 			if (wasIncomplete && isNowComplete) {
@@ -534,5 +559,37 @@ export const upsertTaskFromMonday = internalMutation({
 		});
 
 		return { success: true, taskId };
+	},
+});
+
+/**
+ * Create a chat task for a work item (internal mutation).
+ * Used by actions to create chat tasks when needed.
+ * @param workItemId - The work item ID.
+ * @param name - Optional task name (defaults to "Chat").
+ * @returns The ID of the created chat task.
+ */
+export const createChatTaskInternal = internalMutation({
+	args: {
+		workItemId: v.id("workItems"),
+		name: v.optional(v.string()),
+	},
+	handler: async (ctx, args) => {
+		const workItem = await ctx.db.get(args.workItemId);
+		if (!workItem || workItem._deletionTime) {
+			throw new Error(
+				JSON.stringify({
+					...ErrorCodes.NOT_FOUND,
+					message: "Work item not found.",
+				}),
+			);
+		}
+
+		return await ctx.db.insert("tasks", {
+			workItemId: args.workItemId,
+			name: args.name ?? "Chat",
+			status: "Not Started",
+			type: "chat",
+		});
 	},
 });

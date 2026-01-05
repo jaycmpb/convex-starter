@@ -116,6 +116,7 @@ export const createDocument = mutation({
 
 		// Trigger AI analysis if document is attached to a task.
 		if (args.taskId) {
+			await ctx.db.patch(args.taskId, { aiAnalysisPending: true });
 			await ctx.scheduler.runAfter(0, internal.src.aiWorkflows.actions.analyzeTaskDocuments, {
 				taskId: args.taskId,
 			});
@@ -314,6 +315,7 @@ export const replaceDocumentFile = mutation({
 
 		// Re-trigger AI analysis if document is attached to a task (file content changed).
 		if (document.taskId) {
+			await ctx.db.patch(document.taskId, { aiAnalysisPending: true });
 			await ctx.scheduler.runAfter(0, internal.src.aiWorkflows.actions.analyzeTaskDocuments, {
 				taskId: document.taskId,
 			});
@@ -384,6 +386,7 @@ export const deleteDocument = mutation({
 
 		// Re-trigger AI analysis if document was attached to a task.
 		if (document.taskId) {
+			await ctx.db.patch(document.taskId, { aiAnalysisPending: true });
 			await ctx.scheduler.runAfter(0, internal.src.aiWorkflows.actions.analyzeTaskDocuments, {
 				taskId: document.taskId,
 			});
@@ -439,6 +442,7 @@ export const restoreDocument = mutation({
 
 		// Re-trigger AI analysis if document is attached to a task.
 		if (document.taskId) {
+			await ctx.db.patch(document.taskId, { aiAnalysisPending: true });
 			await ctx.scheduler.runAfter(0, internal.src.aiWorkflows.actions.analyzeTaskDocuments, {
 				taskId: document.taskId,
 			});

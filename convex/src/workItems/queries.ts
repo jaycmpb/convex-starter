@@ -1,5 +1,5 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
-import { query } from "@convex/_generated/server";
+import { internalQuery, query } from "@convex/_generated/server";
 import { v } from "convex/values";
 
 /**
@@ -113,6 +113,24 @@ export const getWorkItemById = query({
 });
 
 /**
+ * Get a work item by its ID (internal version for use in actions).
+ * @param id - The work item ID.
+ * @returns The work item document or null if not found.
+ */
+export const getWorkItemByIdInternal = internalQuery({
+	args: {
+		id: v.id("workItems"),
+	},
+	handler: async (ctx, args) => {
+		const workItem = await ctx.db.get(args.id);
+		if (!workItem || workItem._deletionTime) {
+			return null;
+		}
+		return workItem;
+	},
+});
+
+/**
  * Get a work item by its external ID.
  * @param externalId - The external system's work item ID.
  * @returns The work item document or null if not found.
@@ -209,6 +227,30 @@ export const getWorkItemsByTeamAssignee = query({
 		);
 
 		return workItemsWithTasks.filter((wi) => wi !== null);
+	},
+});
+
+/**
+ * Get available status options for a work item based on its type.
+ * @param workItemId - The work item ID.
+ * @returns Array of status strings from the work item type's statusConfig, or empty array if not found.
+ */
+export const getStatusOptionsForWorkItem = query({
+	args: {
+		workItemId: v.id("workItems"),
+	},
+	handler: async (ctx, args) => {
+		const workItem = await ctx.db.get(args.workItemId);
+		if (!workItem || workItem._deletionTime) {
+			return [];
+		}
+
+		const workItemType = await ctx.db.get(workItem.typeId);
+		if (!workItemType || workItemType.deletedAt) {
+			return [];
+		}
+
+		return workItemType.statusConfig.map((config) => config.status);
 	},
 });
 

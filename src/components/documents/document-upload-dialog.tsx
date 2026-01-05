@@ -170,8 +170,14 @@ export function DocumentUploadDialog({
 					{hasExistingDocument && existingDocument ? (
 						<div className="space-y-4">
 							{/* AI Analysis Panel (staff only) */}
-							{isStaff && aiAnalysis && (
-								<AiAnalysisPanel analysis={aiAnalysis} />
+							{isStaff && (
+								<AiAnalysisPanel
+									taskId={taskId as Id<"tasks">}
+									analysis={aiAnalysis?.analysis ?? undefined}
+									currentDocumentIds={existingDocument ? [existingDocument._id] : []}
+									isAnalysisPending={aiAnalysis?.isPending}
+									taskStatus={taskWithDocument?.status}
+								/>
 							)}
 							<div>
 								<h3 className="text-sm font-medium mb-2">Current Document</h3>

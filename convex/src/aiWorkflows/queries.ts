@@ -38,6 +38,21 @@ export const getTaskAnalysisContext = internalQuery({
 			.filter((q) => q.eq(q.field("deletedAt"), undefined))
 			.collect();
 
+		// Get file URLs for vision analysis.
+		const documentsWithUrls = await Promise.all(
+			documents.map(async (doc) => {
+				const url = await ctx.storage.getUrl(doc.storageId);
+				return {
+					id: doc._id as Id<"documents">,
+					storageId: doc.storageId,
+					name: doc.name,
+					mimeType: doc.mimeType,
+					size: doc.size,
+					url,
+				};
+			}),
+		);
+
 		return {
 			taskId: task._id,
 			taskName: task.name,
@@ -45,13 +60,34 @@ export const getTaskAnalysisContext = internalQuery({
 			workItemId: workItem._id,
 			workItemName: workItem.name,
 			workItemTypeName: workItemType.name,
-			documents: documents.map((doc) => ({
-				id: doc._id as Id<"documents">,
-				name: doc.name,
-				mimeType: doc.mimeType,
-				size: doc.size,
-			})),
+			documents: documentsWithUrls,
 		};
+	},
+});
+
+/**
+ * Find or create a chat task for a work item.
+ * @param workItemId - The work item ID.
+ * @returns The chat task ID.
+ */
+export const findOrCreateChatTask = internalQuery({
+	args: {
+		workItemId: v.id("workItems"),
+	},
+	handler: async (ctx, args) => {
+		// Look for existing chat task.
+		const existingChatTask = await ctx.db
+			.query("tasks")
+			.withIndex("by_workItemId", (q) => q.eq("workItemId", args.workItemId))
+			.filter((q) => q.and(q.eq(q.field("type"), "chat"), q.eq(q.field("deletedAt"), undefined)))
+			.first();
+
+		if (existingChatTask) {
+			return existingChatTask._id;
+		}
+
+		// No existing chat task found - return null to indicate one needs to be created.
+		return null;
 	},
 });
 
