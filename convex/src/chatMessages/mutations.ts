@@ -192,4 +192,3 @@ export const sendMessageAsEmployee = internalMutation({
 		return messageId;
 	},
 });
-
